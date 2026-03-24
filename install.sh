@@ -218,6 +218,13 @@ EOF
 echo -e "${GREEN}✅ .env.local oluşturuldu${NC}"
 echo -e "${YELLOW}⚠️  API key'leri SuperAdmin → API Ayarları'ndan girin!${NC}"
 
+# dotenv/config sadece .env okur, .env.local okumaz.
+# Tüm sonraki komutlar (prisma, next build) için shell'e export et.
+set -a
+# shellcheck source=.env.local
+source .env.local
+set +a
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ADIM 6 - VERİTABANI
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
