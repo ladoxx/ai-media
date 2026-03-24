@@ -1,0 +1,558 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String           @id @default(cuid())
+  email       String           @unique
+  password    String
+  name        String
+  systemRole  SystemRole       @default(EDITOR)
+  roleId      String?
+  roleTemplate Role?           @relation(fields: [roleId], references: [id])
+  permissions UserPermission[]
+  active      Boolean          @default(false)
+  approvedBy  String?
+  approvedAt  DateTime?
+  avatar      String?
+  createdAt   DateTime         @default(now())
+  posts       Post[]
+}
+
+enum SystemRole {
+  SUPERADMIN
+  ADMIN
+  EDITOR
+}
+
+// ── RBAC Modelleri ─────────────────────────────────────────────────────────
+
+model Permission {
+  id          String           @id @default(cuid())
+  module      String
+  action      String
+  label       String
+  description String?
+  roles       RolePermission[]
+  users       UserPermission[]
+  @@unique([module, action])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  isDefault   Boolean          @default(false)
+  permissions RolePermission[]
+  users       User[]
+  createdAt   DateTime         @default(now())
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model UserPermission {
+  userId       String
+  permissionId String
+  granted      Boolean    @default(true)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([userId, permissionId])
+}
+
+model ApiKeyViewLog {
+  id        String   @id @default(cuid())
+  userId    String
+  keyName   String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model SuperAdminToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id           String    @id @default(cuid())
+  title        String
+  slug         String    @unique
+  content      String
+  excerpt      String?
+  coverImage   String?
+  status       Status    @default(DRAFT)
+  views        Int       @default(0)
+  readTime     Int       @default(3)
+  seoTitle     String?
+  seoDesc      String?
+  categoryId   String
+  category     Category  @relation(fields: [categoryId], references: [id])
+  authorId     String
+  author       User      @relation(fields: [authorId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  publishedAt  DateTime?
+  comments     Comment[]
+  commentCount Int       @default(0)
+  tags         PostTag[]
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  seoTitle    String?
+  seoDesc     String?
+  postCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  posts       PostTag[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+  @@id([postId, tagId])
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  color       String     @default("finans")
+  icon        String     @default("📰")
+  type        String     @default("news")
+  parentId    String?
+  parent      Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children    Category[] @relation("SubCategories")
+  menuOrder   Int        @default(0)
+  showInMenu  Boolean    @default(true)
+  showInHome  Boolean    @default(true)
+  posts       Post[]
+  createdAt   DateTime   @default(now())
+}
+
+model Page {
+  id          String         @id @default(cuid())
+  title       String
+  slug        String         @unique
+  content     String
+  excerpt     String?
+  status      Status         @default(DRAFT)
+  template    String         @default("default")
+  showInMenu  Boolean        @default(false)
+  menuOrder   Int            @default(0)
+  seoTitle    String?
+  seoDesc     String?
+  ogImage     String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  publishedAt DateTime?
+  revisions   PageRevision[]
+}
+
+model PageRevision {
+  id        String   @id @default(cuid())
+  pageId    String
+  page      Page     @relation(fields: [pageId], references: [id])
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  createdBy String
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model AffiliateLink {
+  id         String           @id @default(cuid())
+  name       String
+  slug       String           @unique @default(cuid())
+  url        String
+  keywords   String
+  commission Float            @default(0)
+  clicks     Int              @default(0)
+  active     Boolean          @default(true)
+  history    AffiliateClick[]
+}
+
+model AffiliateClick {
+  id        String        @id @default(cuid())
+  linkId    String
+  link      AffiliateLink @relation(fields: [linkId], references: [id])
+  ip        String?
+  userAgent String?
+  createdAt DateTime      @default(now())
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  source      String
+  amount      Float
+  currency    String   @default("USD")
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  amount      Float
+  currency    String   @default("USD")
+  description String
+  recurring   Boolean  @default(false)
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model AiPlatform {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  apiKey       String
+  baseUrl      String?
+  model        String
+  active       Boolean   @default(false)
+  isPrimary    Boolean   @default(false)
+  isBackup     Boolean   @default(false)
+  monthlyLimit Int?
+  usedTokens   Int       @default(0)
+  lastTested   DateTime?
+  testStatus   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  logs         AiLog[]
+}
+
+model AiLog {
+  id         String     @id @default(cuid())
+  platformId String
+  platform   AiPlatform @relation(fields: [platformId], references: [id])
+  tokens     Int        @default(0)
+  cost       Float      @default(0)
+  prompt     String
+  response   String
+  duration   Int        @default(0)
+  success    Boolean
+  createdAt  DateTime   @default(now())
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  value     String
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model AutoLog {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model Menu {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  location  String
+  items     MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id       String     @id @default(cuid())
+  menuId   String
+  menu     Menu       @relation(fields: [menuId], references: [id])
+  label    String
+  url      String
+  type     String     @default("custom")
+  target   String     @default("_self")
+  order    Int        @default(0)
+  parentId String?
+  parent   MenuItem?  @relation("MenuItemChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children MenuItem[] @relation("MenuItemChildren")
+  icon     String?
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id])
+  name      String
+  email     String
+  content   String
+  status    CommentStatus @default(PENDING)
+  ip        String?
+  userAgent String?
+  parentId  String?
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Comment[]     @relation("CommentReplies")
+  likes     Int           @default(0)
+  isSpam    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+}
+
+model ThemeSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  userId    String?
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  NEW_COMMENT
+  NEW_SUBSCRIBER
+  NEW_AFFILIATE_CLICK
+  AUTOMATION_SUCCESS
+  AUTOMATION_ERROR
+  SYSTEM_ERROR
+  NEW_USER
+  LOW_DISK
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model EmailQueue {
+  id        String    @id @default(cuid())
+  to        String
+  subject   String
+  html      String
+  status    String    @default("pending")
+  attempts  Int       @default(0)
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Plugin {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String
+  version     String   @default("1.0.0")
+  author      String?
+  active      Boolean  @default(false)
+  settings    String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Widget {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  area     String
+  type     String
+  settings String  @default("{}")
+  order    Int     @default(0)
+  active   Boolean @default(true)
+}
+
+model AutomationAgent {
+  id             String               @id @default(cuid())
+  name           String
+  slug           String               @unique
+  description    String               @default("")
+  role           String
+  pipelineType   String               @default("news")
+  active         Boolean              @default(true)
+  isCritical     Boolean              @default(false)
+  platformSlug   String               @default("deepseek")
+  model          String               @default("deepseek-chat")
+  temperature    Float                @default(0.7)
+  maxTokens      Int                  @default(2000)
+  timeout        Int                  @default(30000)
+  maxRetry       Int                  @default(3)
+  order          Int
+  systemPrompt   String?
+  userPromptTmpl String?
+  promptVersion  Int                  @default(1)
+  lastRun        DateTime?
+  lastStatus     String?
+  runCount       Int                  @default(0)
+  totalTokens    Int                  @default(0)
+  totalCost      Float                @default(0)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  logs           AutomationAgentLog[]
+  promptHistory  AgentPromptHistory[]
+}
+
+model AgentPromptHistory {
+  id             String          @id @default(cuid())
+  agentId        String
+  agent          AutomationAgent @relation(fields: [agentId], references: [id])
+  systemPrompt   String
+  userPromptTmpl String
+  version        Int
+  note           String?
+  createdAt      DateTime        @default(now())
+}
+
+model AutomationAgentLog {
+  id        String          @id @default(cuid())
+  agentId   String
+  agent     AutomationAgent @relation(fields: [agentId], references: [id])
+  sessionId String
+  status    String
+  message   String?
+  tokens    Int             @default(0)
+  cost      Float           @default(0)
+  duration  Int             @default(0)
+  createdAt DateTime        @default(now())
+}
+
+model CloudflareWorker {
+  id            String    @id @default(cuid())
+  name          String
+  workerUrl     String
+  secretKey     String
+  accountId     String?
+  apiToken      String?
+  workerName    String?
+  watermarkText String    @default("Para Pusulası")
+  active        Boolean   @default(true)
+  lastTested    DateTime?
+  testStatus    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model AutomationSession {
+  id          String    @id @default(cuid())
+  category    String
+  status      String
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  totalPosts  Int       @default(0)
+  totalTokens Int       @default(0)
+  totalCost   Float     @default(0)
+  error       String?
+}
+
+// ── Reklam Sistemi ─────────────────────────────────────────────────────────
+
+model AdZone {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  position    String
+  size        String
+  active      Boolean   @default(true)
+  ads         Ad[]
+  clicks      AdClick[]
+  createdAt   DateTime  @default(now())
+}
+
+model Ad {
+  id          String    @id @default(cuid())
+  name        String
+  zoneId      String
+  zone        AdZone    @relation(fields: [zoneId], references: [id])
+  type        AdType
+  code        String    @default("")
+  imageUrl    String?
+  linkUrl     String?
+  active      Boolean   @default(true)
+  isAbTest    Boolean   @default(false)
+  abGroup     String?
+  impressions Int       @default(0)
+  clicks      AdClick[]
+  startDate   DateTime?
+  endDate     DateTime?
+  price       Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum AdType {
+  ADSENSE_AUTO
+  ADSENSE_MANUAL
+  CUSTOM_HTML
+  AFFILIATE_BANNER
+  SPONSORED
+}
+
+model AdClick {
+  id        String   @id @default(cuid())
+  adId      String
+  ad        Ad       @relation(fields: [adId], references: [id])
+  zoneId    String
+  zone      AdZone   @relation(fields: [zoneId], references: [id])
+  ip        String?
+  userAgent String?
+  page      String?
+  createdAt DateTime @default(now())
+}
+
+model AdSenseConfig {
+  id          String   @id @default(cuid())
+  publisherId String   @default("")
+  autoAdsOn   Boolean  @default(false)
+  active      Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}

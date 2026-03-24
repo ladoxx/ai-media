@@ -1,0 +1,541 @@
+================================================================================
+  VAYBELİX — SİSTEM GEREKSİNİMLERİ VE ÖZELLİK DOKÜMANI
+  Oluşturulma Tarihi: 2026-03-24
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. PROJE TANIMI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Vaybelix; çok ajanlı (multi-agent) yapay zeka destekli, tam otomatik haber ve
+rehber içeriği üretip yayınlayan bir içerik platformudur. Süpervizör, editör ve
+ziyaretçi için farklı arayüzler sunar. Finansal takip, reklam yönetimi, SEO
+optimizasyonu ve web push bildirim gibi özellikler içerir.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  2. TEKNİK YIĞIN (TECH STACK)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ÇERÇEVE & ÇALIŞMA ORTAMI
+  ─────────────────────────
+  • Next.js 16 (App Router, TypeScript, Server Components)
+  • React 19 + React DOM 19
+  • Node.js (≥ 20 önerilir)
+  • TypeScript 5
+
+  VERİTABANI
+  ───────────
+  • SQLite (LibSQL / better-sqlite3)
+  • Prisma 7 ORM  (@prisma/adapter-libsql)
+  • İki ayrı veritabanı:
+      - prisma/dev.db          → Ana içerik veritabanı
+      - automation.db          → Otomasyon log/session veritabanı
+
+  KİMLİK DOĞRULAMA
+  ─────────────────
+  • NextAuth 4 (session tabanlı, JWT)
+  • bcryptjs (şifre hash)
+  • Roller: SUPERADMIN | EDITOR
+
+  YAPAY ZEKA PROVİDERLARI
+  ────────────────────────
+  • Anthropic Claude       (@anthropic-ai/sdk)
+  • OpenAI / GPT           (openai sdk)
+  • Google Gemini          (@google/generative-ai)
+  • Groq                   (groq-sdk)
+  • DeepSeek               (özel adaptör, OpenAI uyumlu API)
+  • Tüm sağlayıcılar ai-router aracılığıyla yönetilir;
+    birincil + yedek platform mekanizması mevcuttur.
+
+  GÖRSELLEŞTİRME & UI
+  ─────────────────────
+  • Tailwind CSS 4 + PostCSS
+  • Lucide React (ikonlar)
+  • Recharts (grafik/istatistik)
+  • react-colorful (renk seçici)
+  • @dnd-kit (sürükle-bırak sıralama)
+  • @monaco-editor/react (kod editörü)
+  • TipTap 3 (zengin metin editörü)
+
+  MEDYA & GÖRSEL İŞLEME
+  ──────────────────────
+  • Sharp (SVG → JPG dönüşüm, kapak görseli üretimi)
+  • Cloudflare Worker (uzak görsel üretim servisi)
+  • Pexels API (makale içi ücretsiz stok fotoğraf)
+
+  DİĞER KÜTÜPHANELER
+  ───────────────────
+  • axios (HTTP istemci)
+  • cheerio (HTML scraping)
+  • rss-parser (RSS besleme ayrıştırma)
+  • slugify (URL slug üretimi)
+  • date-fns (tarih işlemleri)
+  • zod (şema doğrulama)
+  • react-hook-form (form yönetimi)
+  • nodemailer (e-posta gönderimi)
+  • web-push + VAPID (tarayıcı push bildirimleri)
+  • node-cron (zamanlanmış görevler)
+  • dotenv (ortam değişkenleri)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. ORTAM DEĞİŞKENLERİ (.env.local)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Zorunlu:
+  ─────────
+  DATABASE_URL           SQLite bağlantı yolu  (file:./prisma/dev.db)
+  NEXTAUTH_SECRET        NextAuth imza anahtarı (openssl rand -base64 32)
+  NEXTAUTH_URL           Uygulama URL'si (http://localhost:3000)
+  ENCRYPTION_KEY         AES-256-CBC anahtarı, 64 hex karakter (openssl rand -hex 32)
+
+  Önerilen:
+  ──────────
+  NEXT_PUBLIC_SITE_URL   Genel site URL'si
+  NEXT_PUBLIC_APP_URL    Uygulama URL'si (public erişimli)
+  APP_URL                Sunucu tarafı uygulama URL'si
+  AUTOMATION_SECRET      Otomasyon API tetikleyici anahtarı (openssl rand -hex 24)
+  PREVIEW_SECRET         Sayfa önizleme token'ı (openssl rand -hex 16)
+
+  Görsel Üretim (Cloudflare Worker):
+  ────────────────────────────────────
+  CF_WORKER_URL          Cloudflare Worker endpoint URL'si
+  CF_SECRET_KEY          Worker erişim anahtarı
+  WATERMARK_TEXT         Görsellere basılacak filigran metni
+
+  Push Bildirimleri (VAPID):
+  ───────────────────────────
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY   VAPID public key
+  VAPID_PRIVATE_KEY              VAPID private key
+  VAPID_EMAIL                    VAPID iletişim e-postası
+
+  Opsiyonel (Veritabanında da saklanabilir):
+  ───────────────────────────────────────────
+  PEXELS_API_KEY         Pexels görsel API anahtarı
+  NEWSAPI_KEY            NewsAPI.org haber akışı
+  TELEGRAM_BOT_TOKEN     Telegram otomasyon raporu
+  TELEGRAM_CHAT_ID       Telegram hedef sohbet ID
+  YOUTUBE_API_KEY        YouTube Data API v3
+  SMTP_HOST              SMTP sunucu adresi
+  SMTP_PORT              SMTP port (varsayılan: 587)
+  SMTP_USER              SMTP kullanıcı adı
+  SMTP_PASS              SMTP şifresi
+  SMTP_FROM              Gönderici e-posta adresi
+
+  NOT: Yapay zeka platform API anahtarları (OpenAI, Anthropic, Groq, vb.)
+  SuperAdmin > AI Platformlar panelinde AES-256-CBC şifreli olarak
+  veritabanında saklanır. .env.local'a koymak gerekmez.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4. VERİTABANI MODELLERİ (35+ MODEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  İÇERİK MODELLERİ
+  ─────────────────
+  User           Kullanıcılar (SUPERADMIN / EDITOR rolleri)
+  Post           Haber ve makale yazıları
+  Category       Kategori ve alt kategoriler (özyinelemeli)
+  Tag            Etiketler
+  PostTag        Post-Etiket bağlantı tablosu
+  Comment        Yorumlar + yanıtlar (özyinelemeli, moderasyon)
+  Page           Statik sayfalar (Hakkımızda, İletişim vb.)
+  PageRevision   Sayfa revizyon geçmişi
+
+  YAPAY ZEKA & OTOMASYON
+  ────────────────────────
+  AiPlatform           AI sağlayıcıları (anahtar, model, limit)
+  AiLog                AI kullanım logları (token, maliyet)
+  AutomationAgent      Pipeline ajanlarının yapılandırması
+  AgentPromptHistory   Ajan prompt versiyonlama geçmişi
+  AutomationAgentLog   Her ajan çalışma kaydı
+  AutomationSession    Pipeline oturum özeti
+  CloudflareWorker     Cloudflare Worker yapılandırması
+
+  FİNANSAL TAKİP
+  ───────────────
+  Income         Gelir kayıtları
+  Expense        Gider kayıtları
+  AffiliateLink  Affiliate bağlantı ve tıklama takibi
+  AffiliateClick Affiliate tıklama kayıtları
+
+  REKLAM SİSTEMİ
+  ───────────────
+  AdZone         Reklam alanı tanımları (10 bölge)
+  Ad             Reklamlar (5 tip: AdSense, HTML, Banner, Sponsored)
+  AdClick        Reklam tıklama kayıtları
+  AdSenseConfig  AdSense yayıncı yapılandırması
+
+  SİSTEM
+  ───────
+  ApiKey         Şifreli API anahtarı deposu
+  Setting        Genel site ayarları (anahtar-değer)
+  ThemeSetting   Tema renk ve görünüm ayarları
+  AutoLog        Sistem işlem logları
+  Notification   Sistem bildirimleri
+  PushSubscription   Tarayıcı push abonelikleri
+  EmailQueue     E-posta kuyruğu
+  Subscriber     Newsletter aboneleri
+  Menu           Navigasyon menüleri
+  MenuItem       Menü öğeleri (özyinelemeli)
+  Plugin         Eklenti yönetimi
+  Widget         Sidebar/alan widget'ları
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5. OTOMASYON SİSTEMİ — PIPELINE MİMARİSİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  İki ayrı pipeline mevcuttur:
+
+  A) HABER PİPELINE (news)
+  ─────────────────────────
+  Adım  1 → ScoutAgent      : RSS/NewsAPI/Reddit/YouTube kaynaklarını tara,
+                               haber başlıklarını listele
+  Adım  2 → WriterAgent     : Seçilen haberi taslak makaleye dönüştür
+  Adım  3 → EditorAgent     : Dil, stil ve tutarlılık düzenlemesi yap
+  Adım  4 → SeoAgent        : SEO başlığı, meta açıklaması, anahtar kelime
+                               optimizasyonu
+  Adım  5 → MediaAgent      : Kapak görseli üret (Sharp/Cloudflare Worker),
+                               Pexels'ten makale içi görseller getir
+  Adım  6 → PublisherAgent  : Veritabanına kaydet, görsel enjekte et, yayınla
+
+  B) REHBER PİPELINE (guide)
+  ──────────────────────────
+  Adım  1 → GuideScoutAgent    : Rehber konusu ve anahtar kelimeler belirle
+  Adım  2 → GuideWriterAgent   : Uzun biçimli rehber içeriği yaz
+  Adım  3 → GuideEditorAgent   : İçeriği düzenle, yapıyı iyileştir
+  Adım  4 → GuideSeoAgent      : Rehber için SEO optimizasyonu
+  Adım  5 → MediaAgent         : Görsel üretimi (paylaşımlı)
+  Adım  6 → GuidePublisherAgent: Affiliate linkleri yerleştir, ToC/JSON-LD
+                                  ekle, görselleri enjekte et, yayınla
+
+  VERİ KAYNAKLARI (Collectors)
+  ─────────────────────────────
+  rss.ts        RSS besleme toplama
+  newsapi.ts    NewsAPI.org API entegrasyonu
+  reddit.ts     Reddit subreddit scraping
+  scraper.ts    Genel web scraping (cheerio)
+  youtube.ts    YouTube Data API v3 entegrasyonu
+  images.ts     Pexels API — inline makale görselleri
+
+  GÖRSEL ENJEKSİYONU (injectInlineImages)
+  ────────────────────────────────────────
+  • HTML <h2> taglarından bölünür
+  • Giriş paragrafından sonra ilk görsel eklenir
+  • Her 2 bölümde bir <figure class="article-image"> eklenir
+  • PEXELS_API_KEY yoksa görselsiz yayın yapılır, hata oluşmaz
+
+  AJANLARIN YAPISI
+  ─────────────────
+  • Her ajan: platformSlug, model, temperature, maxTokens, timeout,
+    maxRetry, systemPrompt, userPromptTmpl ile veritabanından yönetilir
+  • isCritical=true  → ajan başarısız olursa pipeline durur
+  • isCritical=false → ajan atlanır, pipeline devam eder
+  • Prompt versiyonlama: tüm değişiklikler AgentPromptHistory'de saklanır
+  • SuperAdmin panelinden prompt canlı düzenlenebilir ve test edilebilir
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  6. REKLAM YÖNETİM SİSTEMİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  REKLAM BÖLGELERİ (10 Adet)
+  ────────────────────────────
+  header-leaderboard    Site başlığı altı (728×90)
+  footer-leaderboard    Site altbilgisi üstü (728×90)
+  sidebar-top           Kenar çubuğu üstü (300×250)
+  sidebar-middle        Kenar çubuğu ortası (300×250)
+  sidebar-bottom        Kenar çubuğu altı (300×600)
+  content-top           Makale üstü (728×90)
+  content-bottom        Makale altı (728×90)
+  content-inline        Makale içi (genişlik: %100)
+  category-top          Kategori sayfası üstü (728×90)
+  homepage-middle       Anasayfa ortası (728×90)
+  mobile-banner         Mobil sabit alt banner (320×50, yalnızca mobil)
+
+  REKLAM TİPLERİ (5 Tip)
+  ───────────────────────
+  ADSENSE_AUTO      Google AdSense otomatik reklam kodu
+  ADSENSE_MANUAL    Google AdSense manuel slot kodu
+  CUSTOM_HTML       Özel HTML/JavaScript reklam kodu
+  AFFILIATE_BANNER  Görsel + bağlantı affiliate banner
+  SPONSORED         Sponsorlu içerik kartı
+
+  ÖZELLİKLER
+  ───────────
+  • A/B Test: Aynı bölgede iki farklı reklam test edilebilir (cookie tabanlı)
+  • Gösterim sayacı: Her /api/reklam/goster/ isteğinde impressions artar
+  • Tıklama takibi: /api/reklam/tikla/ → AdClick kaydı + 302 yönlendirme
+  • Tarih filtresi: startDate / endDate ile reklam takvimi
+  • Geliştirme ortamında placeholder gösterilir (gerçek reklam kodu çalışmaz)
+  • AdSense otomatik reklam: tüm site için tek publisherId yapılandırması
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  7. GÜVENLİK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ŞİFRELEME
+  ──────────
+  • Algoritma: AES-256-CBC (Node.js crypto modülü)
+  • Anahtar: 256-bit (64 hex karakter) ENCRYPTION_KEY ortam değişkeni
+  • Format: iv_hex:encrypted_hex
+  • encrypt() → ENCRYPTION_KEY yoksa HATA FIRLATIR (plain text yazmaz)
+  • decrypt() → ENCRYPTION_KEY yoksa HATA FIRLATIR (sessizce geçmez)
+  • Şifrelenen veriler: tüm AI platform API anahtarları, ApiKey tablosu
+
+  KİMLİK DOĞRULAMA
+  ─────────────────
+  • NextAuth oturum tabanlı kimlik doğrulama
+  • NEXTAUTH_SECRET ile JWT imzalanır
+  • Şifre depolama: bcryptjs hash (plaintext asla saklanmaz)
+  • Admin rotaları: getServerSession ile her istekte doğrulanır
+  • SUPERADMIN rotaları: rol kontrolü (role !== 'SUPERADMIN' → 403)
+
+  DİĞER ÖNLEMLER
+  ───────────────
+  • AUTOMATION_SECRET: otomasyon API'lerine dışarıdan erişim için token
+  • PREVIEW_SECRET: taslak sayfa önizlemesi için token (boşsa 404 döner)
+  • .env* → .gitignore'da (git'e asla eklenmez)
+  • Yüklenen dosyalar /public/uploads/ → .gitignore'da
+  • Cloudflare Worker URL/secret → .env üzerinden okunur (kod içinde sabit değer yok)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  8. YÖNETİM PANELİ — SAYFALAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EDİTÖR PANELİ (/editor)
+  ─────────────────────────
+  • Dashboard        — Son yazılar, istatistikler
+  • Yazılar          — Liste, yeni oluştur, düzenle
+  • Kategoriler      — Kategori yönetimi
+  • Medya            — Medya kütüphanesi
+
+  SÜPER ADMİN PANELİ (/superadmin)
+  ──────────────────────────────────
+  • Dashboard        — Özet istatistikler + grafikler
+  • AI Platformlar   — Sağlayıcı ekle/düzenle, test et, istatistik
+  • API Anahtarları  — Şifreli anahtar deposu (Pexels, NewsAPI, vb.)
+  • Otomasyon        — Pipeline yönetimi, ajan ayarları, loglar, görsel
+  • Reklamlar        — Reklam alanları, reklamlar, A/B test, istatistik, AdSense
+  • Sayfalar         — Statik sayfa oluştur/düzenle + önizleme
+  • Kategoriler      — Ana/alt kategori, sıralama, görünürlük
+  • Etiketler        — Etiket yönetimi, birleştirme
+  • Yorumlar         — Moderasyon, spam, toplu işlem, ayarlar
+  • Kullanıcılar     — Kullanıcı oluştur/düzenle/sil
+  • Menüler          — Header/footer/vb. menü builder (DnD sıralamalı)
+  • Tema             — Renkler, fontlar, logo, görünüm ayarları
+  • Newsletter       — Aboneler, toplu e-posta gönderimi
+  • Bildirimler      — Sistem bildirimleri, push, ayarlar
+  • Gelir/Gider      — Finansal takip ve raporlama
+  • Eklentiler       — Plugin aktif/pasif, widget alanları, kod editörü
+  • Yedekleme        — Veritabanı yedek oluştur + indir
+  • Ayarlar          — Site adı, favicon, SEO, SMTP, diğerleri
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  9. PUBLIC SİTE — SAYFALAR VE BÖLÜMLER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ROTALAR
+  ────────
+  /                          Anasayfa
+  /[kategori]                Kategori listeleme sayfası
+  /[kategori]/[slug]         Kategori altı makale detayı
+  /haber/[slug]              Haber/makale detay sayfası
+  /rehberler/[alt]/[slug]    Rehber içerik sayfası (ToC sidebar'lı)
+  /ara                       Arama sayfası
+  /etiket/[slug]             Etiket sayfası
+  /preview/[id]?token=...    Taslak sayfa önizleme (token korumalı)
+  /hakkimizda                Hakkımızda
+  /iletisim                  İletişim formu
+  /reklam                    Reklam/Medya kiti
+  /cerez-politikasi          Çerez Politikası
+  /gizlilik                  Gizlilik Politikası
+  /kvkk                      KVKK Aydınlatma Metni
+
+  REKLAM ALANLARI (site içi)
+  ───────────────────────────
+  • Header altı leaderboard  (tüm sayfalarda)
+  • Footer üstü leaderboard  (tüm sayfalarda)
+  • Mobil sabit alt banner   (yalnızca mobil, tüm sayfalarda)
+  • İçerik üstü/altı         (haber detay sayfası)
+  • Kategori üstü            (kategori sayfası)
+  • Anasayfa ortası          (anasayfa)
+  • Sidebar üst/orta/alt     (sidebar bölümleri)
+
+  BİLEŞENLER
+  ────────────
+  Header, Footer, Sidebar, NewsCard, GuideCard, Breadcrumb,
+  CommentSection, ReadingProgress, ViewCounter, SocialShare,
+  TagCloud, NewsletterSection, PushSubscribe, AdZone,
+  GuideTocSidebar, WidgetArea (7 farklı widget)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  10. API YAPISI (80+ ENDPOINT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PUBLIC API'LAR
+  ───────────────
+  GET  /api/yazilar                  Post listesi (filtreli, sayfalı)
+  GET  /api/yazilar/[slug]           Post detayı
+  GET  /api/kategoriler              Kategori listesi
+  GET  /api/etiketler                Etiket listesi
+  GET  /api/etiketler/populer        Popüler etiketler
+  GET  /api/etiketler/[slug]         Etiket detayı
+  GET  /api/ara                      Arama (başlık + içerik)
+  GET  /api/menus/[location]         Menü konuma göre
+  GET  /api/widgetlar/[area]         Widget alanına göre
+  GET  /api/theme/css                Tema CSS (dinamik)
+  GET  /api/reklam/goster/[zone]     Aktif reklamı getir (A/B cookie)
+  GET  /api/reklam/tikla/[adId]      Tıklama kaydet + yönlendir
+  POST /api/yorumlar                 Yorum gönder
+  POST /api/newsletter               Newsletter aboneliği
+  POST /api/iletisim                 İletişim formu
+  POST /api/push/subscribe           Push bildirim aboneliği
+  POST /api/affiliate/click          Affiliate tıklama kaydı
+
+  OTOMASYON API'LAR (AUTOMATION_SECRET gerekli)
+  ─────────────────────────────────────────────
+  POST /api/otomasyon/calistir       Pipeline başlat
+  GET  /api/otomasyon/durum          Pipeline durumu
+  GET  /api/otomasyon/log            Son loglar
+  POST /api/otomasyon/yayinla        Taslak yayınla
+
+  SUPERADMIN API'LAR (SUPERADMIN oturumu gerekli)
+  ─────────────────────────────────────────────────
+  /api/superadmin/ai-platformlar     AI sağlayıcı CRUD + test + istatistik
+  /api/superadmin/api-keys           Şifreli API anahtarı CRUD
+  /api/superadmin/otomasyon/ajanlar  Ajan CRUD + prompt + geçmiş
+  /api/superadmin/reklamlar          Reklam CRUD + A/B test + istatistik
+  /api/superadmin/kategoriler        Kategori CRUD
+  /api/superadmin/etiketler          Etiket CRUD + birleştirme
+  /api/superadmin/yorumlar           Yorum moderasyon + toplu işlem
+  /api/superadmin/kullanicilar       Kullanıcı yönetimi
+  /api/superadmin/menular            Menü + öğe CRUD
+  /api/superadmin/sayfalar           Statik sayfa CRUD + revizyon
+  /api/superadmin/tema               Tema ayarları + sıfırlama
+  /api/superadmin/gelir              Gelir kayıtları
+  /api/superadmin/gider              Gider kayıtları
+  /api/superadmin/newsletter         Aboneler + e-posta gönder
+  /api/superadmin/bildirimler        Bildirimler + push + ayarlar
+  /api/superadmin/ayarlar            Site ayarları
+  /api/superadmin/widgetlar          Widget yönetimi
+  /api/superadmin/pluginler          Plugin yönetimi
+  /api/superadmin/yedek              Yedek oluştur + indir
+  /api/superadmin/rapor              Özet rapor
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  11. BİLDİRİM SİSTEMİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  BİLDİRİM TİPLERİ
+  ─────────────────
+  NEW_COMMENT          Yeni yorum geldi
+  NEW_SUBSCRIBER       Yeni newsletter abonesi
+  NEW_AFFILIATE_CLICK  Affiliate tıklaması
+  AUTOMATION_SUCCESS   Otomasyon başarıyla tamamlandı
+  AUTOMATION_ERROR     Otomasyon hatası
+  SYSTEM_ERROR         Sistem hatası
+  NEW_USER             Yeni kullanıcı kaydı
+  LOW_DISK             Düşük disk alanı uyarısı
+
+  KANALLAR
+  ─────────
+  • Dahili panel bildirimi  (Notification tablosu)
+  • Web Push               (VAPID + web-push kütüphanesi)
+  • E-posta                (SMTP + nodemailer)
+  • Telegram               (Bot API — opsiyonel)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  12. FİNANSAL TAKİP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Gelir kaydı: kaynak, miktar, para birimi, tarih
+  • Gider kaydı: kategori, miktar, tekrarlayan bayrak
+  • Affiliate tıklama sayımı ve komisyon takibi
+  • Sponsorlu reklam satışında otomatik Income kaydı
+  • Özet rapor: aylık gelir/gider grafiği
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  13. TEMA SİSTEMİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • ThemeSetting tablosunda anahtar-değer çiftleri
+  • Gruplar: colors, typography, layout, header, footer
+  • /api/theme/css → dinamik CSS değişken dosyası (cachelenir)
+  • useTheme hook → client tarafında tema değerlerine erişim
+  • Admin panelden sıfırlama: tema varsayılanlara döner
+  • react-colorful ile görsel renk seçici arayüzü
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  14. PLUGİN & WİDGET SİSTEMİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PLUGİNLER
+  ──────────
+  • Veritabanında kayıtlı, aktif/pasif yönetilebilir
+  • Monaco Editör ile kod düzenleme
+  • JSON settings yapısı (her plugin kendi ayarlarını tutar)
+
+  WİDGETLAR (7 Tip)
+  ──────────────────
+  RecentPostsWidget    Son yazılar
+  TrendingWidget       Trend içerikler
+  NewsletterWidget     Newsletter kayıt
+  SearchWidget         Arama kutusu
+  AdWidget             Reklam gösterimi
+  CustomHtmlWidget     Özel HTML
+  WidgetArea           Alan konteyneri (sidebar, footer, vb.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  15. KURULUM VE ÇALIŞMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  KURULUM ADIMLARI
+  ─────────────────
+  1. npm install
+  2. cp .env.local.example .env.local
+     (Tüm zorunlu değişkenleri doldur)
+  3. npx prisma generate
+  4. npx prisma migrate dev --name init
+  5. npx tsx prisma/seed.ts
+     (Varsayılan kategoriler, kullanıcılar, ajan yapılandırmaları)
+  6. npm run dev
+
+  İLK GİRİŞ
+  ──────────
+  URL  : http://localhost:3000/login
+  Seed dosyasında oluşturulan SUPERADMIN hesabıyla giriş yapılır.
+  (seed.ts içindeki e-posta ve şifreye bakın)
+
+  ÜRETİM (PRODUCTION)
+  ────────────────────
+  1. npm run build
+  2. npm start
+  VEYA
+  Vercel / Railway / Fly.io üzerinde dağıtım yapılabilir.
+  DATABASE_URL için production LibSQL/Turso kullanılması önerilir.
+
+  VAPID ANAHTARI OLUŞTURMA
+  ────────────────────────
+  npx web-push generate-vapid-keys
+
+  ŞİFRELEME ANAHTARI OLUŞTURMA
+  ─────────────────────────────
+  openssl rand -hex 32
+
+  PEXELS API ANAHTARI
+  ────────────────────
+  https://www.pexels.com/api/ (ücretsiz üyelik, 200 istek/saat)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  16. PERFORMANS VE SINIRLAMALAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • Pexels API: 200 istek/saat (seri fetch ile rate-limit koruması)
+  • AI platform token limiti: monthlyLimit alanı (aşıldığında yedek platform)
+  • Pipeline ajanları: isCritical=false olanlar başarısız olsa pipeline devam eder
+  • Görsel indirme: /public/uploads/auto/ klasörüne yazılır
+    (disk alanı takibi için LOW_DISK bildirimi mevcuttur)
+  • SQLite: tek sunucu için yeterli; yüksek trafikte Turso/LibSQL önerilir
+
+================================================================================
+  Bu döküman otomatik olarak oluşturulmuştur.
+  Son güncelleme: 2026-03-24
+================================================================================
