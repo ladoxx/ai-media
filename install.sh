@@ -231,6 +231,13 @@ set +a
 echo ""
 echo -e "${BLUE}[6/8] Veritabanı kuruluyor...${NC}"
 
+npx prisma generate
+if [ $? -ne 0 ]; then
+  echo -e "${RED}❌ Prisma client generate hatası!${NC}"
+  exit 1
+fi
+echo -e "${GREEN}✅ Prisma client oluşturuldu${NC}"
+
 npx prisma migrate deploy
 if [ $? -ne 0 ]; then
   echo -e "${RED}❌ Migrate hatası! Veritabanı oluşturulamadı.${NC}"
