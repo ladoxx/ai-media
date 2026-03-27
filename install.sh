@@ -12,7 +12,7 @@ clear
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════╗"
 echo "║     🚀 AI Media - Kurulum Ajanı       ║"
-echo "║         v1.0.0 Setup Script           ║"
+echo "║         v1.1.0 Setup Script           ║"
 echo "╚═══════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -37,103 +37,29 @@ echo -e "${GREEN}✅ Root yetkisi OK${NC}"
 if [ ! -f "package.json" ]; then
   echo -e "${RED}❌ package.json bulunamadı!${NC}"
   echo -e "${YELLOW}   Bu scripti proje klasöründe çalıştırın:${NC}"
-  echo -e "   cd /path/to/ai-media && sudo bash install.sh"
+  echo -e "   cd /root/ai-media && sudo bash install.sh"
   exit 1
 fi
 echo -e "${GREEN}✅ Proje klasörü OK${NC}"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ADIM 2 - BAĞIMLILIKLAR
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ""
-echo -e "${BLUE}[2/8] Gerekli paketler kuruluyor...${NC}"
-
-apt-get update -qq
-
-apt-get install -y -qq \
-  curl \
-  git \
-  wget \
-  unzip \
-  openssl \
-  build-essential \
-  python3 \
-  lsb-release
-echo -e "${GREEN}✅ Temel araçlar kuruldu${NC}"
-
-# Node.js 20
-if command -v node &> /dev/null; then
-  NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-  if [ "$NODE_VERSION" -ge 20 ]; then
-    echo -e "${GREEN}✅ Node.js $(node -v) mevcut${NC}"
-  else
-    echo -e "${YELLOW}⚠️  Node.js $(node -v) eski, güncelleniyor...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-    apt-get install -y nodejs -qq
-    echo -e "${GREEN}✅ Node.js $(node -v) güncellendi${NC}"
-  fi
-else
-  echo -e "${YELLOW}📦 Node.js 20 kuruluyor...${NC}"
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-  apt-get install -y nodejs -qq
-  echo -e "${GREEN}✅ Node.js $(node -v) kuruldu${NC}"
-fi
-
-# PM2
-if ! command -v pm2 &> /dev/null; then
-  echo -e "${YELLOW}📦 PM2 kuruluyor...${NC}"
-  npm install -g pm2 --quiet
-fi
-echo -e "${GREEN}✅ PM2 $(pm2 -v) hazır${NC}"
-
-# Nginx
-if ! command -v nginx &> /dev/null; then
-  echo -e "${YELLOW}📦 Nginx kuruluyor...${NC}"
-  apt-get install -y nginx -qq
-fi
-echo -e "${GREEN}✅ Nginx $(nginx -v 2>&1 | grep -o '[0-9.]*') hazır${NC}"
-
-# Certbot
-if ! command -v certbot &> /dev/null; then
-  echo -e "${YELLOW}📦 Certbot kuruluyor...${NC}"
-  apt-get install -y certbot python3-certbot-nginx -qq
-fi
-echo -e "${GREEN}✅ Certbot hazır${NC}"
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ADIM 3 - PROJE BAĞIMLILIKLARI
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ""
-echo -e "${BLUE}[3/8] Proje bağımlılıkları kuruluyor...${NC}"
-echo -e "${YELLOW}   (native modüller derleniyor, biraz sürebilir...)${NC}"
-
-npm install --silent
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ npm install başarısız!${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✅ Paketler kuruldu${NC}"
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ADIM 4 - KULLANICIDAN BİLGİ AL
+# KULLANICIDAN BİLGİ AL
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}  📋 Kurulum için birkaç bilgiye ihtiyaç var${NC}"
+echo -e "${CYAN}  📋 Kurulum için bilgiler${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Soru 1: IP veya Domain
-echo -e "${YELLOW}❓ Soru 1/2:${NC}"
+# IP veya Domain
+echo -e "${YELLOW}❓ Soru 1/3:${NC}"
 echo -e "   Sunucunun IP adresi veya domain adı nedir?"
-echo -e "   Örnek: 192.168.1.1 veya example.com"
+echo -e "   Örnek: 82.29.174.45 veya example.com"
 echo -ne "${GREEN}   > ${NC}"
 read SERVER_ADDRESS
 
-# http prefix temizle
 SERVER_ADDRESS=$(echo "$SERVER_ADDRESS" | sed 's|https\?://||' | sed 's|/$||')
 
-# URL oluştur
 if [[ $SERVER_ADDRESS =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   IS_IP=true
   SITE_URL="http://$SERVER_ADDRESS"
@@ -144,50 +70,133 @@ fi
 
 echo ""
 
-# Soru 2: Mod seçimi
-echo -e "${YELLOW}❓ Soru 2/2:${NC}"
-echo -e "   Ne yapmak istersiniz?"
+# Admin şifre
+echo -e "${YELLOW}❓ Soru 2/3:${NC}"
+echo -e "   Admin şifresi belirleyin (varsayılan: Admin123!)"
+echo -e "   En az 8 karakter, harf + rakam içermeli"
+echo -ne "${GREEN}   Şifre (boş = Admin123!): ${NC}"
+read -s ADMIN_PASSWORD
+echo ""
+
+if [ -z "$ADMIN_PASSWORD" ]; then
+  ADMIN_PASSWORD="Admin123!"
+fi
+
+echo ""
+
+# Mod seçimi
+echo -e "${YELLOW}❓ Soru 3/3:${NC}"
+echo -e "   Kurulum modu seçin:"
 echo ""
 echo -e "   ${GREEN}1)${NC} 🔧 Dev Modu"
-echo -e "      → Hot-reload aktif, hata ayıklamaya uygun"
-echo -e "      → Port 3000 üzerinden erişim"
+echo -e "      → Hot-reload aktif, port 4000"
 echo -e "      → Test ve geliştirme için ideal"
 echo ""
-echo -e "   ${GREEN}2)${NC} 🚀 Production Kurulum"
-echo -e "      → Build alınır, PM2 ile arka planda çalışır"
-echo -e "      → Nginx reverse proxy + otomatik SSL"
-echo -e "      → Port 80/443 (domain gerekli SSL için)"
+echo -e "   ${GREEN}2)${NC} 🚀 Production (PM2 + Nginx)"
+echo -e "      → PM2 ile arka planda, Nginx + SSL"
+echo -e "      → Port 80/443"
 echo ""
-echo -ne "${GREEN}   Seçiminiz (1 veya 2): ${NC}"
+echo -e "   ${GREEN}3)${NC} 🐳 Docker"
+echo -e "      → docker-compose ile izole container"
+echo -e "      → Port 4000 (veya Nginx ile 80/443)"
+echo ""
+echo -ne "${GREEN}   Seçiminiz (1/2/3): ${NC}"
 read MODE_CHOICE
 
-while [[ "$MODE_CHOICE" != "1" && "$MODE_CHOICE" != "2" ]]; do
-  echo -e "${RED}❌ Geçersiz seçim! 1 veya 2 girin${NC}"
-  echo -ne "${GREEN}   Seçiminiz (1 veya 2): ${NC}"
+while [[ "$MODE_CHOICE" != "1" && "$MODE_CHOICE" != "2" && "$MODE_CHOICE" != "3" ]]; do
+  echo -e "${RED}❌ Geçersiz seçim! 1, 2 veya 3 girin${NC}"
+  echo -ne "${GREEN}   Seçiminiz (1/2/3): ${NC}"
   read MODE_CHOICE
 done
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ADIM 5 - ENV DOSYASI
+# ADIM 2 - BAĞIMLILIKLAR
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo ""
-echo -e "${BLUE}[5/8] Yapılandırma dosyası oluşturuluyor...${NC}"
+echo -e "${BLUE}[2/8] Gerekli paketler kuruluyor...${NC}"
 
-# Production'da NEXTAUTH_URL'yi https ile ayarla
-if [ "$MODE_CHOICE" = "2" ] && [ "$IS_IP" = false ]; then
-  NEXTAUTH_URL="https://$SERVER_ADDRESS"
-elif [ "$MODE_CHOICE" = "2" ]; then
-  NEXTAUTH_URL="http://$SERVER_ADDRESS"
+apt-get update -qq
+
+apt-get install -y -qq curl git wget unzip openssl build-essential python3 lsb-release
+echo -e "${GREEN}✅ Temel araçlar kuruldu${NC}"
+
+# Docker modu için Docker kur, diğerleri için Node.js
+if [ "$MODE_CHOICE" = "3" ]; then
+  if command -v docker &> /dev/null; then
+    echo -e "${GREEN}✅ Docker $(docker --version | grep -o '[0-9.]*' | head -1) mevcut${NC}"
+  else
+    echo -e "${YELLOW}📦 Docker kuruluyor...${NC}"
+    curl -fsSL https://get.docker.com | sh
+    systemctl enable docker && systemctl start docker
+    echo -e "${GREEN}✅ Docker kuruldu${NC}"
+  fi
+
+  if command -v docker compose version &> /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Docker Compose mevcut${NC}"
+  elif command -v docker-compose &> /dev/null; then
+    echo -e "${GREEN}✅ Docker Compose (v1) mevcut${NC}"
+  else
+    echo -e "${YELLOW}📦 Docker Compose plugin kuruluyor...${NC}"
+    apt-get install -y -qq docker-compose-plugin
+    echo -e "${GREEN}✅ Docker Compose kuruldu${NC}"
+  fi
 else
-  NEXTAUTH_URL="http://$SERVER_ADDRESS:3000"
+  # Node.js 20
+  if command -v node &> /dev/null; then
+    NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -ge 20 ]; then
+      echo -e "${GREEN}✅ Node.js $(node -v) mevcut${NC}"
+    else
+      echo -e "${YELLOW}⚠️  Güncelleniyor...${NC}"
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
+      apt-get install -y nodejs -qq
+    fi
+  else
+    echo -e "${YELLOW}📦 Node.js 20 kuruluyor...${NC}"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
+    apt-get install -y nodejs -qq
+  fi
+  echo -e "${GREEN}✅ Node.js $(node -v) hazır${NC}"
+
+  if [ "$MODE_CHOICE" = "2" ]; then
+    command -v pm2 &>/dev/null || npm install -g pm2 --quiet
+    echo -e "${GREEN}✅ PM2 hazır${NC}"
+
+    command -v nginx &>/dev/null || apt-get install -y nginx -qq
+    echo -e "${GREEN}✅ Nginx hazır${NC}"
+
+    command -v certbot &>/dev/null || apt-get install -y certbot python3-certbot-nginx -qq
+    echo -e "${GREEN}✅ Certbot hazır${NC}"
+  fi
 fi
 
-# Güvenli key'ler üret
-NEXTAUTH_SECRET=$(openssl rand -base64 32)
-ENCRYPTION_KEY=$(openssl rand -hex 32)   # 64 hex karakter = AES-256 için zorunlu
-AUTOMATION_SECRET=$(openssl rand -base64 24 | tr -d '=/+' | head -c 32)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ADIM 3 - ENV DOSYASI
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo ""
+echo -e "${BLUE}[3/8] Yapılandırma dosyası oluşturuluyor...${NC}"
 
-cat > .env.local << EOF
+# URL hesapla
+if [ "$MODE_CHOICE" = "2" ] && [ "$IS_IP" = false ]; then
+  NEXTAUTH_URL="https://$SERVER_ADDRESS"
+elif [ "$MODE_CHOICE" = "1" ]; then
+  NEXTAUTH_URL="http://$SERVER_ADDRESS:4000"
+else
+  NEXTAUTH_URL="http://$SERVER_ADDRESS:4000"
+fi
+
+# Güvenli key'ler üret (var olanı koruma)
+if [ -f ".env.local" ]; then
+  echo -e "${YELLOW}⚠️  .env.local mevcut — key'ler korunuyor, URL güncelleniyor...${NC}"
+  sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=\"${NEXTAUTH_URL}\"|" .env.local
+  sed -i "s|APP_URL=.*|APP_URL=\"${NEXTAUTH_URL}\"|" .env.local
+  sed -i "s|NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=\"${NEXTAUTH_URL}\"|" .env.local
+else
+  NEXTAUTH_SECRET=$(openssl rand -base64 32)
+  ENCRYPTION_KEY=$(openssl rand -hex 32)
+  AUTOMATION_SECRET=$(openssl rand -base64 24 | tr -d '=/+' | head -c 32)
+
+  cat > .env.local << EOF
 # ─── Veritabanı ───────────────────────────────
 DATABASE_URL="file:./prisma/dev.db"
 
@@ -209,48 +218,77 @@ CLOUDFLARE_WORKER_SECRET=""
 # ─── Site URL ─────────────────────────────────
 NEXT_PUBLIC_SITE_URL="${NEXTAUTH_URL}"
 
-# ─── API Anahtarları (SuperAdmin panelinden ekle) ─
-# DeepSeek, OpenAI, Anthropic, Pexels,
-# YouTube, Telegram, NewsAPI, vs.
-# Bu anahtarları buraya YAZMA → SuperAdmin panelini kullan!
+# ─── API Anahtarları (SuperAdmin panelinden ekle!) ─
+# DeepSeek, OpenAI, Anthropic, Pexels, YouTube, Telegram vs.
 EOF
+fi
 
-echo -e "${GREEN}✅ .env.local oluşturuldu${NC}"
-echo -e "${YELLOW}⚠️  API key'leri SuperAdmin → API Ayarları'ndan girin!${NC}"
+echo -e "${GREEN}✅ .env.local hazır${NC}"
 
-# dotenv/config sadece .env okur, .env.local okumaz.
-# Tüm sonraki komutlar (prisma, next build) için shell'e export et.
+# Shell'e export et (sonraki prisma komutları için)
 set -a
 # shellcheck source=.env.local
 source .env.local
 set +a
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ADIM 6 - VERİTABANI
+# ADIM 4 - PROJE BAĞIMLILIKLARI (Docker dışı)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo ""
-echo -e "${BLUE}[6/8] Veritabanı kuruluyor...${NC}"
-
-npx prisma generate
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Prisma client generate hatası!${NC}"
-  exit 1
+if [ "$MODE_CHOICE" != "3" ]; then
+  echo ""
+  echo -e "${BLUE}[4/8] Proje bağımlılıkları kuruluyor...${NC}"
+  echo -e "${YELLOW}   (native modüller derleniyor...)${NC}"
+  npm install --silent
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ npm install başarısız!${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✅ Paketler kuruldu${NC}"
 fi
-echo -e "${GREEN}✅ Prisma client oluşturuldu${NC}"
 
-npx prisma migrate deploy
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ Migrate hatası! Veritabanı oluşturulamadı.${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✅ Veritabanı migrate edildi${NC}"
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ADIM 5 - VERİTABANI (Docker dışı)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ "$MODE_CHOICE" != "3" ]; then
+  echo ""
+  echo -e "${BLUE}[5/8] Veritabanı kuruluyor...${NC}"
 
-npx prisma db seed
-if [ $? -ne 0 ]; then
-  echo -e "${YELLOW}⚠️  Seed başarısız, manuel seed gerekebilir: npx prisma db seed${NC}"
-else
-  echo -e "${GREEN}✅ Başlangıç verileri eklendi${NC}"
+  npx prisma generate
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Prisma client generate hatası!${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✅ Prisma client oluşturuldu${NC}"
+
+  npx prisma migrate deploy
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Migrate hatası!${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✅ Veritabanı migrate edildi${NC}"
+
+  npx prisma db seed
+  if [ $? -ne 0 ]; then
+    echo -e "${YELLOW}⚠️  Seed başarısız, manuel dene: npx prisma db seed${NC}"
+  else
+    echo -e "${GREEN}✅ Başlangıç verileri eklendi${NC}"
+  fi
+
+  # Admin şifre güncelle
+  echo -e "${YELLOW}🔑 Admin şifresi ayarlanıyor...${NC}"
+  npx tsx scripts/set-password.ts "$ADMIN_PASSWORD"
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Admin şifresi ayarlandı${NC}"
+  else
+    echo -e "${YELLOW}⚠️  Şifre güncellenemedi, varsayılan: Admin123!${NC}"
+  fi
 fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ADIM 6 - PACKAGE.JSON (Linux fix)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+sed -i 's/"dev": "set NODE_OPTIONS[^"]*"/"dev": "NODE_OPTIONS=--max-old-space-size=8192 next dev -p 4000"/' package.json 2>/dev/null || true
+sed -i 's/"start": "next start"/"start": "next start -p 4000"/' package.json 2>/dev/null || true
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ADIM 7 - BAŞLATMA
@@ -258,72 +296,54 @@ fi
 echo ""
 echo -e "${BLUE}[7/8] Uygulama başlatılıyor...${NC}"
 
-# package.json dev scriptini Linux için güncelle (Windows 'set' komutu çalışmaz)
-sed -i 's/"dev": "set NODE_OPTIONS.*&&/"dev": "/' package.json 2>/dev/null || true
-sed -i 's/"dev": "next dev\b/"dev": "NODE_OPTIONS=--max-old-space-size=8192 next dev/' package.json 2>/dev/null || true
-
+# ── MOD 1: DEV ──────────────────────────────────────────────────
 if [ "$MODE_CHOICE" = "1" ]; then
 
-  # ── DEV MODU ──
-  echo -e "${CYAN}🔧 Dev modu başlatılıyor...${NC}"
-
-  ufw allow 3000/tcp 2>/dev/null || true
+  ufw allow 4000/tcp 2>/dev/null || true
 
   echo ""
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}  ✅ KURULUM TAMAMLANDI!${NC}"
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
-  echo -e "  🌐 Site:       ${CYAN}${SITE_URL}:3000${NC}"
+  echo -e "  🌐 Site:       ${CYAN}${SITE_URL}:4000${NC}"
   echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
-  echo -e "  🔑 Şifre:      ${CYAN}Admin123!${NC}"
+  echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
-  echo -e "  ${RED}⚠️  İLK GİRİŞTEN SONRA YAPILACAKLAR:${NC}"
-  echo -e "  1. Admin şifresini değiştir"
-  echo -e "  2. SuperAdmin → API Ayarları → key'leri ekle"
-  echo -e "  3. SuperAdmin → Otomasyon → zamanlamayı ayarla"
-  echo ""
-  echo -e "${YELLOW}  Dev modu başlatılıyor... (Ctrl+C ile durdur)${NC}"
-  echo -e "${YELLOW}  PM2 ile arka planda çalıştırmak için:${NC}"
+  echo -e "  ${YELLOW}PM2 ile arka planda çalıştırmak için:${NC}"
   echo -e "  pm2 start npm --name 'ai-media-dev' -- run dev"
   echo ""
+  echo -e "${YELLOW}  Dev modu başlatılıyor... (Ctrl+C → durdur)${NC}"
+  echo ""
 
-  # Sekiz GB heap, direkt next dev
-  NODE_OPTIONS=--max-old-space-size=8192 npx next dev
+  NODE_OPTIONS=--max-old-space-size=8192 npx next dev -p 4000
 
-else
+# ── MOD 2: PRODUCTION (PM2 + Nginx) ─────────────────────────────
+elif [ "$MODE_CHOICE" = "2" ]; then
 
-  # ── PRODUCTION MODU ──
-  echo -e "${CYAN}🚀 Production modu kuruluyor...${NC}"
-
-  # Build
-  echo -e "${YELLOW}📦 Build alınıyor (birkaç dakika sürebilir)...${NC}"
+  echo -e "${YELLOW}📦 Build alınıyor...${NC}"
   NODE_OPTIONS=--max-old-space-size=4096 npx next build
   if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Build hatası! Logları kontrol edin.${NC}"
+    echo -e "${RED}❌ Build hatası!${NC}"
     exit 1
   fi
   echo -e "${GREEN}✅ Build tamamlandı${NC}"
 
-  # PM2
   pm2 delete ai-media 2>/dev/null || true
   pm2 start npm --name "ai-media" -- start
   pm2 startup systemd -u root --hp /root | tail -1 | bash 2>/dev/null || true
   pm2 save
-  echo -e "${GREEN}✅ PM2 ile başlatıldı${NC}"
+  echo -e "${GREEN}✅ PM2 başlatıldı${NC}"
 
-  # Nginx
   NGINX_CONF="/etc/nginx/sites-available/ai-media"
   cat > $NGINX_CONF << NGINX
 server {
     listen 80;
     server_name ${SERVER_ADDRESS};
 
-    # Gzip
     gzip on;
     gzip_types text/plain application/json application/javascript text/css;
 
-    # Statik dosyalar
     location /_next/static/ {
         alias $(pwd)/.next/static/;
         expires 1y;
@@ -335,9 +355,9 @@ server {
         expires 30d;
     }
 
-    # Otomasyon SSE için uzun timeout
+    # SSE için uzun timeout
     location /api/otomasyon/calistir {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4000;
         proxy_http_version 1.1;
         proxy_set_header Connection '';
         proxy_set_header Host \$host;
@@ -348,7 +368,7 @@ server {
     }
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -360,80 +380,117 @@ server {
 }
 NGINX
 
-  # Varsayılan nginx sitesini devre dışı bırak
   rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
   ln -sf $NGINX_CONF /etc/nginx/sites-enabled/ai-media
-
-  nginx -t
-  if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Nginx konfigürasyon hatası!${NC}"
-    exit 1
-  fi
-  systemctl reload nginx
+  nginx -t && systemctl reload nginx
   echo -e "${GREEN}✅ Nginx ayarlandı${NC}"
 
-  # Firewall
   ufw allow 80/tcp 2>/dev/null || true
   ufw allow 443/tcp 2>/dev/null || true
 
-  # SSL (sadece domain için)
   SSL_ACTIVE=false
   if [ "$IS_IP" = false ]; then
-    echo -e "${YELLOW}🔒 SSL sertifikası alınıyor...${NC}"
-    certbot --nginx -d "$SERVER_ADDRESS" \
-      --non-interactive --agree-tos \
-      -m "admin@${SERVER_ADDRESS}" \
-      --redirect
+    echo -e "${YELLOW}🔒 SSL alınıyor...${NC}"
+    certbot --nginx -d "$SERVER_ADDRESS" --non-interactive --agree-tos \
+      -m "admin@${SERVER_ADDRESS}" --redirect
     if [ $? -eq 0 ]; then
       SSL_ACTIVE=true
-      # NEXTAUTH_URL ve APP_URL https olarak güncelle
       sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=\"https://${SERVER_ADDRESS}\"|" .env.local
       sed -i "s|APP_URL=.*|APP_URL=\"https://${SERVER_ADDRESS}\"|" .env.local
       sed -i "s|NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=\"https://${SERVER_ADDRESS}\"|" .env.local
       pm2 restart ai-media
       echo -e "${GREEN}✅ SSL kuruldu${NC}"
     else
-      echo -e "${YELLOW}⚠️  SSL alınamadı. DNS kayıtları doğru mu? Manuel dene:${NC}"
-      echo -e "   certbot --nginx -d ${SERVER_ADDRESS}"
+      echo -e "${YELLOW}⚠️  SSL alınamadı. DNS doğru mu?${NC}"
     fi
-  else
-    echo -e "${YELLOW}⚠️  IP adresi için SSL alınamaz (domain gerekli)${NC}"
   fi
 
-  # Final URL
-  if [ "$SSL_ACTIVE" = true ]; then
-    FINAL_URL="https://$SERVER_ADDRESS"
-  else
-    FINAL_URL="http://$SERVER_ADDRESS"
-  fi
+  [ "$SSL_ACTIVE" = true ] && FINAL_URL="https://$SERVER_ADDRESS" || FINAL_URL="http://$SERVER_ADDRESS"
 
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # ADIM 8 - SONUÇ
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   echo ""
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}  ✅ PRODUCTION KURULUM TAMAMLANDI!${NC}"
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "  🌐 Site:       ${CYAN}${FINAL_URL}${NC}"
-  echo -e "  🔧 Admin:      ${CYAN}${FINAL_URL}/admin${NC}"
-  echo -e "  ⚙️  SuperAdmin: ${CYAN}${FINAL_URL}/superadmin${NC}"
   echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
-  echo -e "  🔑 Şifre:      ${CYAN}Admin123!${NC}"
+  echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
-  echo -e "  📊 PM2 durumu: ${CYAN}pm2 status${NC}"
-  echo -e "  📋 Loglar:     ${CYAN}pm2 logs ai-media${NC}"
-  echo -e "  🔄 Yeniden:    ${CYAN}pm2 restart ai-media${NC}"
-  echo ""
-  echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${RED}  🔐 GÜVENLİK UYARILARI${NC}"
-  echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo ""
-  echo -e "  ${YELLOW}1.${NC} Admin şifresini HEMEN değiştir"
-  echo -e "  ${YELLOW}2.${NC} SuperAdmin → API Ayarları → key'leri ekle"
-  echo -e "  ${YELLOW}3.${NC} SuperAdmin → Otomasyon → zamanlamayı kur"
-  echo -e "  ${YELLOW}4.${NC} .env.local dosyasını kimseyle paylaşma!"
-  echo -e "  ${YELLOW}5.${NC} Düzenli yedek al: SuperAdmin → Yedekleme"
+  echo -e "  📊 pm2 status  |  📋 pm2 logs ai-media"
   echo ""
 
+# ── MOD 3: DOCKER ────────────────────────────────────────────────
+elif [ "$MODE_CHOICE" = "3" ]; then
+
+  # touch DB dosyaları — volume mount için boş dosya gerekli
+  touch prisma/dev.db automation.db
+  mkdir -p public/uploads backups
+
+  echo -e "${YELLOW}🐳 Docker image build ediliyor...${NC}"
+  docker build -t ai-media:latest .
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Docker build hatası!${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✅ Image hazır${NC}"
+
+  # Çalışan container varsa durdur
+  docker compose down 2>/dev/null || docker-compose down 2>/dev/null || true
+
+  # Başlat
+  docker compose up -d 2>/dev/null || docker-compose up -d
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Container başlatılamadı!${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}✅ Container çalışıyor${NC}"
+
+  # Container içinde seed + şifre güncelle
+  echo -e "${YELLOW}🌱 Veritabanı seed + şifre ayarlanıyor...${NC}"
+  sleep 5  # Container'ın migrate etmesini bekle
+
+  docker exec ai-media npx prisma db seed 2>/dev/null && \
+    docker exec ai-media npx tsx scripts/set-password.ts "$ADMIN_PASSWORD"
+
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Veritabanı ve şifre hazır${NC}"
+  else
+    echo -e "${YELLOW}⚠️  Manuel seed gerekebilir: docker exec ai-media npx prisma db seed${NC}"
+  fi
+
+  ufw allow 4000/tcp 2>/dev/null || true
+
+  echo ""
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}  ✅ DOCKER KURULUM TAMAMLANDI!${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "  🌐 Site:       ${CYAN}${SITE_URL}:4000${NC}"
+  echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
+  echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
+  echo ""
+  echo -e "  🐳 Komutlar:"
+  echo -e "  docker compose logs -f        # loglar"
+  echo -e "  docker compose restart        # yeniden başlat"
+  echo -e "  docker compose down           # durdur"
+  echo -e "  docker compose pull && docker compose up -d  # güncelle"
+  echo ""
+  echo -e "  🔑 Şifre değiştirmek için:"
+  echo -e "  docker exec ai-media npx tsx scripts/set-password.ts 'YeniŞifre'"
+  echo ""
 fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ADIM 8 - GÜVENLİK
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${RED}  🔐 YAPILMASI GEREKENLER${NC}"
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "  ${YELLOW}1.${NC} SuperAdmin → API Ayarları → AI key'leri ekle"
+echo -e "  ${YELLOW}2.${NC} SuperAdmin → Otomasyon → zamanlamayı ayarla"
+echo -e "  ${YELLOW}3.${NC} .env.local dosyasını kimseyle paylaşma!"
+echo ""
+echo -e "  ${CYAN}Şifre değiştirmek:${NC}"
+echo -e "  npx tsx scripts/set-password.ts 'YeniŞifre123!'"
+echo ""

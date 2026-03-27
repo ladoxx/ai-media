@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: ai-media:latest
+    container_name: ai-media
+    ports:
+      - "4000:4000"
+    volumes:
+      # Persistent data — survives container restarts/rebuilds
+      - ./prisma/dev.db:/app/prisma/dev.db
+      - ./public/uploads:/app/public/uploads
+      - ./automation.db:/app/automation.db
+      - ./backups:/app/backups
+    env_file:
+      - .env.local
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

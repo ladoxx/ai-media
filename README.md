@@ -13,12 +13,32 @@ chmod +x install.sh
 sudo bash install.sh
 ```
 
-Script otomatik olarak:
-- Node.js 20, Nginx, PM2, Certbot kurar
-- `npm install` ile native modülleri derler
-- Güvenli key'ler üretir (`.env.local`)
-- Veritabanını migrate eder ve seed atar
-- **Dev** veya **Production** modunu başlatır
+Script kurulum sırasında şunları sorar:
+1. **IP veya domain** — sunucu adresi
+2. **Admin şifresi** — ilk giriş şifresi (boş = `Admin123!`)
+3. **Kurulum modu** — Dev / Production / Docker
+
+---
+
+## Kurulum Modları
+
+### 1) Dev Modu
+Hot-reload aktif, port 4000. Test ve geliştirme için.
+
+### 2) Production (PM2 + Nginx)
+Build alınır, PM2 ile arka planda çalışır. Nginx reverse proxy + otomatik SSL (domain gerekli).
+
+### 3) Docker
+```bash
+sudo bash install.sh   # → 3 seç
+```
+Veya manuel:
+```bash
+cp .env.example .env.local && nano .env.local
+touch prisma/dev.db automation.db
+mkdir -p public/uploads backups
+docker compose up -d
+```
 
 ---
 
@@ -27,11 +47,18 @@ Script otomatik olarak:
 | Alan | Değer |
 |------|-------|
 | Email | `admin@cyba.com.tr` |
-| Şifre | `Admin123!` |
+| Şifre | Kurulumda belirlenen şifre |
 | Admin | `/admin` |
 | SuperAdmin | `/superadmin` |
 
-> **Güvenlik:** İlk girişten sonra şifreyi değiştirin.
+**Şifre değiştirmek:**
+```bash
+# Doğrudan
+npx tsx scripts/set-password.ts 'YeniŞifre123!'
+
+# Docker
+docker exec ai-media npx tsx scripts/set-password.ts 'YeniŞifre123!'
+```
 
 ---
 
@@ -43,6 +70,8 @@ Script otomatik olarak:
 | OS | Ubuntu 22.04 / Debian 12 |
 | RAM | Min 2 GB (4 GB önerilen) |
 | Disk | Min 5 GB |
+
+Docker için sadece Docker Engine yeterli, Node.js gerekmez.
 
 ---
 
@@ -61,13 +90,17 @@ npm install
 
 # 3. Ortam değişkenleri
 cp .env.example .env.local
-nano .env.local  # zorunlu alanları doldur
+nano .env.local
 
 # 4. Veritabanı
+npx prisma generate
 npx prisma migrate deploy
 npx prisma db seed
 
-# 5. Başlatma (production)
+# 5. Admin şifre
+npx tsx scripts/set-password.ts 'ŞifreniziYazın'
+
+# 6. Başlatma (production)
 npm run build
 pm2 start npm --name "ai-media" -- start
 pm2 save && pm2 startup
@@ -79,9 +112,9 @@ pm2 save && pm2 startup
 
 ```env
 DATABASE_URL="file:./prisma/dev.db"
-NEXTAUTH_SECRET="openssl rand -base64 32 ile üret"
+NEXTAUTH_SECRET="openssl rand -base64 32"
 NEXTAUTH_URL="https://siteadresi.com"
-ENCRYPTION_KEY="openssl rand -hex 32 ile üret (64 karakter)"
+ENCRYPTION_KEY="openssl rand -hex 32   # 64 karakter zorunlu"
 AUTOMATION_SECRET="rastgele string"
 APP_URL="https://siteadresi.com"
 NEXT_PUBLIC_SITE_URL="https://siteadresi.com"
@@ -105,21 +138,32 @@ NEXT_PUBLIC_SITE_URL="https://siteadresi.com"
 
 ---
 
+## Docker Komutları
+
+```bash
+docker compose up -d          # Başlat
+docker compose down           # Durdur
+docker compose logs -f        # Loglar
+docker compose restart        # Yeniden başlat
+docker compose up -d --build  # Yeniden build et
+```
+
 ## PM2 Komutları
 
 ```bash
-pm2 status          # Durum
-pm2 logs ai-media   # Loglar
+pm2 status
+pm2 logs ai-media
 pm2 restart ai-media
-pm2 stop ai-media
 ```
 
 ## Güncelleme
 
 ```bash
 git pull
-npm install
-npx prisma migrate deploy
-npm run build
-pm2 restart ai-media
+
+# PM2 ile:
+npm install && npx prisma migrate deploy && npm run build && pm2 restart ai-media
+
+# Docker ile:
+docker compose up -d --build
 ```

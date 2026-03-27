@@ -76,17 +76,19 @@ export async function GET(req: NextRequest) {
 
       try {
         const runnerPath = path.resolve(process.cwd(), 'automation', 'runner.ts')
-        // tsx bin — shell:true lets Windows resolve tsx → tsx.cmd automatically
-        const tsxBin = path.resolve(process.cwd(), 'node_modules', '.bin', 'tsx')
+        const isWin = process.platform === 'win32'
+        // On Windows use tsx.cmd (batch file, needs shell); on Linux use tsx directly
+        const tsxBin = path.resolve(
+          process.cwd(), 'node_modules', '.bin', isWin ? 'tsx.cmd' : 'tsx'
+        )
 
-        // Quote paths to handle Windows paths with spaces
-        const child = spawn(`"${tsxBin}"`, [`"${runnerPath}"`, category], {
+        const child = spawn(tsxBin, [runnerPath, category], {
           env: {
             ...process.env,
             NODE_OPTIONS: '--max-old-space-size=4096',
           },
           cwd: process.cwd(),
-          shell: true,
+          shell: isWin, // shell only needed on Windows for .cmd files
         })
 
         let buffer = ''
