@@ -43,6 +43,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/automation      ./automation
 COPY --from=builder /app/lib             ./lib
 COPY --from=builder /app/types           ./types
+COPY --from=builder /app/scripts         ./scripts
 COPY --from=builder /app/app/generated   ./app/generated
 
 # Writable directories (volumes will mount here)
