@@ -108,26 +108,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Dev note */}
-          <div className="mt-6 pt-5 border-t border-[#1e1e35]">
-            <p className="text-xs text-[#606080] text-center mb-2">Geliştirme hesapları</p>
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => { setEmail('editor@cyba.com.tr'); setPassword('Editor123!') }}
-                className="w-full text-xs text-[#606080] hover:text-white py-1 px-2 rounded hover:bg-[#1e1e35]/50 transition-colors text-left font-mono"
-              >
-                editor@cyba.com.tr
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEmail('admin@cyba.com.tr'); setPassword('Admin123!') }}
-                className="w-full text-xs text-[#606080] hover:text-white py-1 px-2 rounded hover:bg-[#1e1e35]/50 transition-colors text-left font-mono"
-              >
-                admin@cyba.com.tr
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

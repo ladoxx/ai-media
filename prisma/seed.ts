@@ -23,7 +23,7 @@ async function main() {
   const hash = await bcrypt.hash('Admin123!', 12)
   const admin = await prisma.user.upsert({
     where: { email: 'admin@cyba.com.tr' },
-    update: { systemRole: 'SUPERADMIN', active: true, password: hash },
+    update: { systemRole: 'SUPERADMIN', active: true },
     create: { email: 'admin@cyba.com.tr', password: hash, name: 'Admin', systemRole: 'SUPERADMIN', active: true },
   })
   console.log('✅ Admin oluşturuldu')

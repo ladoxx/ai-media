@@ -575,15 +575,26 @@ elif [ "$MODE_CHOICE" = "3" ]; then
 
   # Container içinde seed + şifre güncelle
   echo -e "${YELLOW}🌱 Veritabanı seed + şifre ayarlanıyor...${NC}"
-  sleep 5  # Container'ın migrate etmesini bekle
 
-  docker exec ai-media npx prisma db seed 2>/dev/null && \
-    docker exec ai-media npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
+  # Container'ın migrate edip başlamasını bekle (max 30sn)
+  for i in $(seq 1 30); do
+    if docker exec ai-media npx prisma migrate status &>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
 
-  if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Veritabanı ve şifre hazır${NC}"
+  # Seed (başarısız olsa bile devam et — veri zaten var olabilir)
+  docker exec ai-media npx prisma db seed && \
+    echo -e "${GREEN}✅ Seed tamamlandı${NC}" || \
+    echo -e "${YELLOW}⚠️  Seed atlandı (veri zaten mevcut olabilir)${NC}"
+
+  # Admin şifresi — seed başarısından bağımsız olarak çalışır
+  echo -e "${YELLOW}🔑 Admin email ve şifre ayarlanıyor...${NC}"
+  if docker exec ai-media npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"; then
+    echo -e "${GREEN}✅ Admin hazır: ${ADMIN_EMAIL}${NC}"
   else
-    echo -e "${YELLOW}⚠️  Manuel seed gerekebilir: docker exec ai-media npx prisma db seed${NC}"
+    echo -e "${RED}❌ Admin ayarlanamadı! Manuel: docker exec ai-media npx tsx scripts/set-admin.ts 'email' 'şifre'${NC}"
   fi
 
   ufw allow 4000/tcp 2>/dev/null || true

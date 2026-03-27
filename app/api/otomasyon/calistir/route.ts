@@ -10,7 +10,10 @@ export const maxDuration = 800 // ~13 minutes max
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isAuthorized(req: NextRequest, session: any): boolean {
-  if (session && (session.user as { role?: string })?.role === 'SUPERADMIN') return true
+  if (session) {
+    const u = session.user as { role?: string; systemRole?: string }
+    if (u?.systemRole === 'SUPERADMIN' || u?.role === 'SUPERADMIN') return true
+  }
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
   if (token && token === process.env.AUTOMATION_SECRET) return true
   return false
