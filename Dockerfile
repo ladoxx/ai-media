@@ -16,8 +16,15 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Set DB path so static page generation doesn't fail
+ENV DATABASE_URL="file:./prisma/dev.db"
+
 # Generate Prisma client
 RUN npx prisma generate
+
+# Create empty DB schema — needed for static prerendering at build time
+# (volume mount overrides this at runtime with the real DB)
+RUN npx prisma migrate deploy
 
 # Build Next.js
 RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build

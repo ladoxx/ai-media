@@ -12,9 +12,71 @@ clear
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════╗"
 echo "║     🚀 AI Media - Kurulum Ajanı       ║"
-echo "║         v1.1.0 Setup Script           ║"
+echo "║         v1.2.0 Setup Script           ║"
 echo "╚═══════════════════════════════════════╝"
 echo -e "${NC}"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GÜNCELLEME MODU (bash install.sh update)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ "$1" = "update" ] || [ "$1" = "--update" ]; then
+  echo -e "${BLUE}🔄 Güncelleme modu...${NC}"
+
+  if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}❌ Root yetkisi gerekli!${NC}"; exit 1
+  fi
+  if [ ! -f "package.json" ]; then
+    echo -e "${RED}❌ Proje klasöründe çalıştırın!${NC}"; exit 1
+  fi
+
+  # Kaynak kodu güncelle
+  echo -e "${YELLOW}📥 Kod güncelleniyor...${NC}"
+  git pull
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ git pull başarısız!${NC}"; exit 1
+  fi
+  echo -e "${GREEN}✅ Kod güncellendi${NC}"
+
+  # Hangi mod aktif?
+  if command -v docker &>/dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "ai-media"; then
+    RUNNING_MODE="docker"
+  elif command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "ai-media"; then
+    RUNNING_MODE="pm2"
+  else
+    RUNNING_MODE="manual"
+  fi
+
+  echo -e "${BLUE}Tespit edilen mod: ${CYAN}${RUNNING_MODE}${NC}"
+
+  if [ "$RUNNING_MODE" = "docker" ]; then
+    echo -e "${YELLOW}🐳 Docker image yeniden build ediliyor...${NC}"
+    docker compose build --no-cache
+    docker compose up -d
+    echo -e "${GREEN}✅ Docker güncellendi${NC}"
+
+  elif [ "$RUNNING_MODE" = "pm2" ]; then
+    echo -e "${YELLOW}📦 Bağımlılıklar güncelleniyor...${NC}"
+    npm install --silent
+    echo -e "${YELLOW}🗃️  Veritabanı migrate ediliyor...${NC}"
+    set -a; source .env.local; set +a
+    npx prisma migrate deploy
+    echo -e "${YELLOW}📦 Build alınıyor...${NC}"
+    NODE_OPTIONS=--max-old-space-size=4096 npx next build
+    pm2 restart ai-media
+    echo -e "${GREEN}✅ PM2 güncellendi${NC}"
+
+  else
+    echo -e "${YELLOW}⚠️  Çalışan servis tespit edilemedi.${NC}"
+    echo -e "   Manuel güncelleme için: npm install && npx prisma migrate deploy && npm run build"
+  fi
+
+  echo ""
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${GREEN}  ✅ GÜNCELLEME TAMAMLANDI!${NC}"
+  echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  exit 0
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ADIM 1 - SİSTEM KONTROLÜ
@@ -502,6 +564,9 @@ echo ""
 echo -e "  ${YELLOW}1.${NC} SuperAdmin → API Ayarları → AI key'leri ekle"
 echo -e "  ${YELLOW}2.${NC} SuperAdmin → Otomasyon → zamanlamayı ayarla"
 echo -e "  ${YELLOW}3.${NC} .env.local dosyasını kimseyle paylaşma!"
+echo ""
+echo -e "  ${CYAN}Güncelleme:${NC}"
+echo -e "  bash install.sh update"
 echo ""
 echo -e "  ${CYAN}Email/şifre değiştirmek:${NC}"
 echo -e "  npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'"
