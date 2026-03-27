@@ -12,7 +12,7 @@ clear
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════╗"
 echo "║     🚀 AI Media - Kurulum Ajanı       ║"
-echo "║         v1.2.0 Setup Script           ║"
+echo "║         v1.3.0 Setup Script           ║"
 echo "╚═══════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -57,8 +57,9 @@ if [ "$1" = "update" ] || [ "$1" = "--update" ]; then
   elif [ "$RUNNING_MODE" = "pm2" ]; then
     echo -e "${YELLOW}📦 Bağımlılıklar güncelleniyor...${NC}"
     npm install --silent
-    echo -e "${YELLOW}🗃️  Veritabanı migrate ediliyor...${NC}"
+    echo -e "${YELLOW}🗃️  Yeni migration'lar uygulanıyor (mevcut veri korunur)...${NC}"
     set -a; source .env.local; set +a
+    npx prisma generate
     npx prisma migrate deploy
     echo -e "${YELLOW}📦 Build alınıyor...${NC}"
     NODE_OPTIONS=--max-old-space-size=4096 npx next build
@@ -259,17 +260,70 @@ else
   NEXTAUTH_URL="http://$SERVER_ADDRESS:4000"
 fi
 
-# Güvenli key'ler üret (var olanı koruma)
-if [ -f ".env.local" ]; then
-  echo -e "${YELLOW}⚠️  .env.local mevcut — key'ler korunuyor, URL güncelleniyor...${NC}"
-  sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=\"${NEXTAUTH_URL}\"|" .env.local
-  sed -i "s|APP_URL=.*|APP_URL=\"${NEXTAUTH_URL}\"|" .env.local
-  sed -i "s|NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=\"${NEXTAUTH_URL}\"|" .env.local
-else
-  NEXTAUTH_SECRET=$(openssl rand -base64 32)
-  ENCRYPTION_KEY=$(openssl rand -hex 32)
-  AUTOMATION_SECRET=$(openssl rand -base64 24 | tr -d '=/+' | head -c 32)
+# Güvenli key'ler üret
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+AUTOMATION_SECRET=$(openssl rand -base64 24 | tr -d '=/+' | head -c 32)
 
+if [ -f ".env.local" ]; then
+  echo -e "${YELLOW}⚠️  .env.local mevcut — URL'ler ve eksik/placeholder key'ler güncelleniyor...${NC}"
+
+  # URL alanlarını her zaman güncelle
+  if grep -q "^NEXTAUTH_URL=" .env.local; then
+    sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=\"${NEXTAUTH_URL}\"|" .env.local
+  else
+    echo "NEXTAUTH_URL=\"${NEXTAUTH_URL}\"" >> .env.local
+  fi
+  if grep -q "^APP_URL=" .env.local; then
+    sed -i "s|^APP_URL=.*|APP_URL=\"${NEXTAUTH_URL}\"|" .env.local
+  else
+    echo "APP_URL=\"${NEXTAUTH_URL}\"" >> .env.local
+  fi
+  if grep -q "^NEXT_PUBLIC_SITE_URL=" .env.local; then
+    sed -i "s|^NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=\"${NEXTAUTH_URL}\"|" .env.local
+  else
+    echo "NEXT_PUBLIC_SITE_URL=\"${NEXTAUTH_URL}\"" >> .env.local
+  fi
+
+  # DATABASE_URL yoksa ekle
+  if ! grep -q "^DATABASE_URL=" .env.local; then
+    echo "DATABASE_URL=\"file:./prisma/dev.db\"" >> .env.local
+  fi
+
+  # NEXTAUTH_SECRET — placeholder veya eksikse yenile
+  EXISTING_SECRET=$(grep "^NEXTAUTH_SECRET=" .env.local | cut -d'"' -f2 | cut -d"'" -f2)
+  if [ -z "$EXISTING_SECRET" ] || echo "$EXISTING_SECRET" | grep -qi "openssl\|rand\|rastgele\|placeholder\|siteadresi"; then
+    if grep -q "^NEXTAUTH_SECRET=" .env.local; then
+      sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=\"${NEXTAUTH_SECRET}\"|" .env.local
+    else
+      echo "NEXTAUTH_SECRET=\"${NEXTAUTH_SECRET}\"" >> .env.local
+    fi
+    echo -e "${GREEN}   ✅ NEXTAUTH_SECRET yenilendi${NC}"
+  fi
+
+  # ENCRYPTION_KEY — placeholder veya eksikse yenile
+  EXISTING_ENC=$(grep "^ENCRYPTION_KEY=" .env.local | cut -d'"' -f2 | cut -d"'" -f2)
+  if [ -z "$EXISTING_ENC" ] || echo "$EXISTING_ENC" | grep -qi "openssl\|rand\|hex\|karakter\|placeholder"; then
+    if grep -q "^ENCRYPTION_KEY=" .env.local; then
+      sed -i "s|^ENCRYPTION_KEY=.*|ENCRYPTION_KEY=\"${ENCRYPTION_KEY}\"|" .env.local
+    else
+      echo "ENCRYPTION_KEY=\"${ENCRYPTION_KEY}\"" >> .env.local
+    fi
+    echo -e "${GREEN}   ✅ ENCRYPTION_KEY yenilendi${NC}"
+  fi
+
+  # AUTOMATION_SECRET — placeholder veya eksikse yenile
+  EXISTING_AUTO=$(grep "^AUTOMATION_SECRET=" .env.local | cut -d'"' -f2 | cut -d"'" -f2)
+  if [ -z "$EXISTING_AUTO" ] || echo "$EXISTING_AUTO" | grep -qi "rastgele\|openssl\|rand\|placeholder"; then
+    if grep -q "^AUTOMATION_SECRET=" .env.local; then
+      sed -i "s|^AUTOMATION_SECRET=.*|AUTOMATION_SECRET=\"${AUTOMATION_SECRET}\"|" .env.local
+    else
+      echo "AUTOMATION_SECRET=\"${AUTOMATION_SECRET}\"" >> .env.local
+    fi
+    echo -e "${GREEN}   ✅ AUTOMATION_SECRET yenilendi${NC}"
+  fi
+
+else
   cat > .env.local << EOF
 # ─── Veritabanı ───────────────────────────────
 DATABASE_URL="file:./prisma/dev.db"
