@@ -196,7 +196,7 @@ export class GuidePublisherAgent extends BaseAgent {
       fetch(`${appUrl}/api/revalidate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
-        body: JSON.stringify({ tags: ['posts'] }),
+        body: '{}',
       }).catch(() => {})
     }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 
 export async function POST(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -7,12 +7,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 })
   }
 
-  const body = await req.json().catch(() => ({})) as { tags?: string[] }
-  const tags = body.tags?.length ? body.tags : ['posts']
+  // Revalidate root layout → cascades to all pages
+  revalidatePath('/', 'layout')
 
-  for (const tag of tags) {
-    revalidateTag(tag)
-  }
-
-  return NextResponse.json({ ok: true, revalidated: tags })
+  return NextResponse.json({ ok: true })
 }

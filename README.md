@@ -51,13 +51,13 @@ docker compose up -d
 | Admin | `/admin` |
 | SuperAdmin | `/superadmin` |
 
-**Şifre değiştirmek:**
+**Email ve şifre değiştirmek:**
 ```bash
 # Doğrudan
-npx tsx scripts/set-password.ts 'YeniŞifre123!'
+npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'
 
 # Docker
-docker exec ai-media npx tsx scripts/set-password.ts 'YeniŞifre123!'
+docker exec ai-media npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'
 ```
 
 ---

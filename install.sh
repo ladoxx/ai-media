@@ -52,7 +52,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # IP veya Domain
-echo -e "${YELLOW}❓ Soru 1/3:${NC}"
+echo -e "${YELLOW}❓ Soru 1/4:${NC}"
 echo -e "   Sunucunun IP adresi veya domain adı nedir?"
 echo -e "   Örnek: 82.29.174.45 veya example.com"
 echo -ne "${GREEN}   > ${NC}"
@@ -70,8 +70,20 @@ fi
 
 echo ""
 
+# Admin email
+echo -e "${YELLOW}❓ Soru 2/4:${NC}"
+echo -e "   Admin email adresi nedir? (varsayılan: admin@cyba.com.tr)"
+echo -ne "${GREEN}   Email (boş = varsayılan): ${NC}"
+read ADMIN_EMAIL
+
+if [ -z "$ADMIN_EMAIL" ]; then
+  ADMIN_EMAIL="admin@cyba.com.tr"
+fi
+
+echo ""
+
 # Admin şifre
-echo -e "${YELLOW}❓ Soru 2/3:${NC}"
+echo -e "${YELLOW}❓ Soru 3/4:${NC}"
 echo -e "   Admin şifresi belirleyin (varsayılan: Admin123!)"
 echo -e "   En az 8 karakter, harf + rakam içermeli"
 echo -ne "${GREEN}   Şifre (boş = Admin123!): ${NC}"
@@ -85,7 +97,7 @@ fi
 echo ""
 
 # Mod seçimi
-echo -e "${YELLOW}❓ Soru 3/3:${NC}"
+echo -e "${YELLOW}❓ Soru 4/4:${NC}"
 echo -e "   Kurulum modu seçin:"
 echo ""
 echo -e "   ${GREEN}1)${NC} 🔧 Dev Modu"
@@ -276,11 +288,11 @@ if [ "$MODE_CHOICE" != "3" ]; then
 
   # Admin şifre güncelle
   echo -e "${YELLOW}🔑 Admin şifresi ayarlanıyor...${NC}"
-  npx tsx scripts/set-password.ts "$ADMIN_PASSWORD"
+  npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
   if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Admin şifresi ayarlandı${NC}"
+    echo -e "${GREEN}✅ Admin email ve şifre ayarlandı${NC}"
   else
-    echo -e "${YELLOW}⚠️  Şifre güncellenemedi, varsayılan: Admin123!${NC}"
+    echo -e "${YELLOW}⚠️  Güncelleme başarısız. Manuel: npx tsx scripts/set-admin.ts email şifre${NC}"
   fi
 fi
 
@@ -307,7 +319,7 @@ if [ "$MODE_CHOICE" = "1" ]; then
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "  🌐 Site:       ${CYAN}${SITE_URL}:4000${NC}"
-  echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
+  echo -e "  👤 Email:      ${CYAN}${ADMIN_EMAIL}${NC}"
   echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
   echo -e "  ${YELLOW}PM2 ile arka planda çalıştırmak için:${NC}"
@@ -413,7 +425,7 @@ NGINX
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "  🌐 Site:       ${CYAN}${FINAL_URL}${NC}"
-  echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
+  echo -e "  👤 Email:      ${CYAN}${ADMIN_EMAIL}${NC}"
   echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
   echo -e "  📊 pm2 status  |  📋 pm2 logs ai-media"
@@ -450,7 +462,7 @@ elif [ "$MODE_CHOICE" = "3" ]; then
   sleep 5  # Container'ın migrate etmesini bekle
 
   docker exec ai-media npx prisma db seed 2>/dev/null && \
-    docker exec ai-media npx tsx scripts/set-password.ts "$ADMIN_PASSWORD"
+    docker exec ai-media npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
 
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Veritabanı ve şifre hazır${NC}"
@@ -466,7 +478,7 @@ elif [ "$MODE_CHOICE" = "3" ]; then
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
   echo -e "  🌐 Site:       ${CYAN}${SITE_URL}:4000${NC}"
-  echo -e "  👤 Email:      ${CYAN}admin@cyba.com.tr${NC}"
+  echo -e "  👤 Email:      ${CYAN}${ADMIN_EMAIL}${NC}"
   echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
   echo -e "  🐳 Komutlar:"
@@ -476,7 +488,7 @@ elif [ "$MODE_CHOICE" = "3" ]; then
   echo -e "  docker compose pull && docker compose up -d  # güncelle"
   echo ""
   echo -e "  🔑 Şifre değiştirmek için:"
-  echo -e "  docker exec ai-media npx tsx scripts/set-password.ts 'YeniŞifre'"
+  echo -e "  docker exec ai-media npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre'"
   echo ""
 fi
 
@@ -491,6 +503,6 @@ echo -e "  ${YELLOW}1.${NC} SuperAdmin → API Ayarları → AI key'leri ekle"
 echo -e "  ${YELLOW}2.${NC} SuperAdmin → Otomasyon → zamanlamayı ayarla"
 echo -e "  ${YELLOW}3.${NC} .env.local dosyasını kimseyle paylaşma!"
 echo ""
-echo -e "  ${CYAN}Şifre değiştirmek:${NC}"
-echo -e "  npx tsx scripts/set-password.ts 'YeniŞifre123!'"
+echo -e "  ${CYAN}Email/şifre değiştirmek:${NC}"
+echo -e "  npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'"
 echo ""
