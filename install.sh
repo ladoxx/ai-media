@@ -511,20 +511,12 @@ if [ "$MODE_CHOICE" != "3" ]; then
   fi
   echo -e "${GREEN}✅ Veritabanı migrate edildi${NC}"
 
-  npx prisma db seed
+  # Seed — admin email+şifresini env var olarak geçir
+  SEED_ADMIN_EMAIL="$ADMIN_EMAIL" SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" npx prisma db seed
   if [ $? -ne 0 ]; then
     echo -e "${YELLOW}⚠️  Seed başarısız, manuel dene: npx prisma db seed${NC}"
   else
-    echo -e "${GREEN}✅ Başlangıç verileri eklendi${NC}"
-  fi
-
-  # Admin şifre güncelle
-  echo -e "${YELLOW}🔑 Admin şifresi ayarlanıyor...${NC}"
-  npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
-  if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Admin email ve şifre ayarlandı${NC}"
-  else
-    echo -e "${YELLOW}⚠️  Güncelleme başarısız. Manuel: npx tsx scripts/set-admin.ts email şifre${NC}"
+    echo -e "${GREEN}✅ Veritabanı hazır, admin: ${ADMIN_EMAIL}${NC}"
   fi
 fi
 
@@ -700,17 +692,15 @@ elif [ "$MODE_CHOICE" = "3" ]; then
     sleep 1
   done
 
-  # Seed (başarısız olsa bile devam et — veri zaten var olabilir)
-  docker exec ai-media npx prisma db seed && \
-    echo -e "${GREEN}✅ Seed tamamlandı${NC}" || \
-    echo -e "${YELLOW}⚠️  Seed atlandı (veri zaten mevcut olabilir)${NC}"
-
-  # Admin şifresi — seed başarısından bağımsız olarak çalışır
-  echo -e "${YELLOW}🔑 Admin email ve şifre ayarlanıyor...${NC}"
-  if docker exec ai-media npx tsx scripts/set-admin.ts "$ADMIN_EMAIL" "$ADMIN_PASSWORD"; then
-    echo -e "${GREEN}✅ Admin hazır: ${ADMIN_EMAIL}${NC}"
+  # Seed — admin email+şifresini env var olarak geçir (varsayılan oluşturulmaz)
+  echo -e "${YELLOW}🌱 Veritabanı seed + admin ayarlanıyor...${NC}"
+  if docker exec \
+    -e SEED_ADMIN_EMAIL="$ADMIN_EMAIL" \
+    -e SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+    ai-media npx prisma db seed; then
+    echo -e "${GREEN}✅ Seed tamamlandı, admin: ${ADMIN_EMAIL}${NC}"
   else
-    echo -e "${RED}❌ Admin ayarlanamadı! Manuel: docker exec ai-media npx tsx scripts/set-admin.ts 'email' 'şifre'${NC}"
+    echo -e "${YELLOW}⚠️  Seed başarısız. Manuel: docker exec ai-media npx tsx scripts/set-admin.ts 'email' 'şifre'${NC}"
   fi
 
   ufw allow 4000/tcp 2>/dev/null || true

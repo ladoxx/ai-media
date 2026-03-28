@@ -20,19 +20,32 @@ async function main() {
   console.log('🌱 Seed başlıyor...')
 
   // ── Superadmin ───────────────────────────────────────────────────────────
-  // SUPERADMIN zaten varsa (farklı email ile) dokunma — sadece active yap
+  // Env var varsa onları kullan (install.sh'den geçirilir), yoksa varsayılan
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@cyba.com.tr'
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin123!'
+
   const existingAdmin = await prisma.user.findFirst({ where: { systemRole: 'SUPERADMIN' } })
   let admin: { id: string }
   if (!existingAdmin) {
-    const hash = await bcrypt.hash('Admin123!', 12)
+    const hash = await bcrypt.hash(adminPassword, 12)
     admin = await prisma.user.create({
-      data: { email: 'admin@cyba.com.tr', password: hash, name: 'Admin', systemRole: 'SUPERADMIN', active: true },
+      data: { email: adminEmail, password: hash, name: 'Admin', systemRole: 'SUPERADMIN', active: true },
     })
-    console.log('✅ Admin oluşturuldu (varsayılan: admin@cyba.com.tr / Admin123!)')
+    console.log(`✅ Admin oluşturuldu: ${adminEmail}`)
   } else {
     admin = existingAdmin
-    await prisma.user.update({ where: { id: existingAdmin.id }, data: { active: true } })
-    console.log('✅ Admin zaten mevcut, aktif edildi')
+    // Env var ile çalışıyorsa email+şifreyi güncelle
+    if (process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD) {
+      const hash = await bcrypt.hash(adminPassword, 12)
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { email: adminEmail, password: hash, active: true },
+      })
+      console.log(`✅ Admin güncellendi: ${adminEmail}`)
+    } else {
+      await prisma.user.update({ where: { id: existingAdmin.id }, data: { active: true } })
+      console.log('✅ Admin zaten mevcut, aktif edildi')
+    }
   }
 
   // ── RBAC: Tüm yetkiler ───────────────────────────────────────────────────
