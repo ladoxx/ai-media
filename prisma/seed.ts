@@ -177,7 +177,108 @@ async function main() {
   }
   console.log('✅ Rol şablonları oluşturuldu')
 
-  console.log('✅ Seed tamamlandı — sistem boş, içerik yok')
+  // ── Kategoriler (sadece yoksa oluştur) ───────────────────────────────────
+  const catCount = await prisma.category.count()
+  if (catCount === 0) {
+    const ANA = [
+      {
+        name: 'Finans', slug: 'finans', icon: '💰', color: 'cat-finans',
+        description: 'Borsa, kripto, altın ve yatırım haberleri', menuOrder: 1,
+        children: [
+          { name: 'Borsa',               slug: 'borsa',               icon: '📈', color: 'cat-finans' },
+          { name: 'Kripto',              slug: 'kripto',              icon: '₿',  color: 'cat-finans' },
+          { name: 'Altın & Döviz',       slug: 'altin-doviz',         icon: '🥇', color: 'cat-finans' },
+          { name: 'Yatırım Rehberleri',  slug: 'yatirim-rehberleri',  icon: '📚', color: 'cat-finans', type: 'guide' },
+          { name: 'Analizler',           slug: 'analizler',           icon: '🔍', color: 'cat-finans' },
+        ],
+      },
+      {
+        name: 'Ekonomi', slug: 'ekonomi', icon: '📊', color: 'cat-ekonomi',
+        description: 'Türkiye ve dünya ekonomisi haberleri', menuOrder: 2,
+        children: [
+          { name: 'Türkiye Ekonomisi', slug: 'turkiye-ekonomisi', icon: '🇹🇷', color: 'cat-ekonomi' },
+          { name: 'Dünya Ekonomisi',   slug: 'dunya-ekonomisi',   icon: '🌍', color: 'cat-ekonomi' },
+          { name: 'Enflasyon & Faiz',  slug: 'enflasyon-faiz',    icon: '📉', color: 'cat-ekonomi' },
+          { name: 'Şirket Haberleri',  slug: 'sirket-haberleri',  icon: '🏢', color: 'cat-ekonomi' },
+        ],
+      },
+      {
+        name: 'Gayrimenkul', slug: 'gayrimenkul', icon: '🏡', color: 'cat-gayrimenkul',
+        description: 'Konut, kira ve gayrimenkul yatırımları', menuOrder: 3,
+        children: [
+          { name: 'Konut Projeleri',    slug: 'konut-projeleri',   icon: '🏗️', color: 'cat-gayrimenkul' },
+          { name: 'Kira & Satılık',     slug: 'kira-satilik',      icon: '🔑', color: 'cat-gayrimenkul' },
+          { name: 'Yatırım Fırsatları', slug: 'yatirim-firsatlari',icon: '💎', color: 'cat-gayrimenkul' },
+          { name: 'Tapu & Hukuk',       slug: 'tapu-hukuk',        icon: '⚖️', color: 'cat-gayrimenkul' },
+          { name: 'Bölgesel Analiz',    slug: 'bolgesel-analiz',   icon: '🗺️', color: 'cat-gayrimenkul' },
+        ],
+      },
+      {
+        name: 'Oyun', slug: 'oyun', icon: '🎮', color: 'cat-oyun',
+        description: 'Oyun haberleri, incelemeler ve e-spor', menuOrder: 4,
+        children: [
+          { name: 'Oyun Haberleri',    slug: 'oyun-haberleri',    icon: '📰', color: 'cat-oyun' },
+          { name: 'Mobil Oyunlar',     slug: 'mobil-oyunlar',     icon: '📱', color: 'cat-oyun' },
+          { name: 'PC & Konsol',       slug: 'pc-konsol',         icon: '🖥️', color: 'cat-oyun' },
+          { name: 'Oyun İncelemeleri', slug: 'oyun-incelemeleri', icon: '⭐', color: 'cat-oyun', type: 'guide' },
+          { name: 'E-spor',            slug: 'e-spor',            icon: '🏆', color: 'cat-oyun' },
+        ],
+      },
+      {
+        name: 'Teknoloji', slug: 'teknoloji', icon: '🤖', color: 'cat-teknoloji',
+        description: 'Yapay zeka, startup ve teknoloji haberleri', menuOrder: 5,
+        children: [
+          { name: 'Yapay Zeka', slug: 'yapay-zeka', icon: '🧠', color: 'cat-teknoloji' },
+          { name: 'Startup',    slug: 'startup',    icon: '🚀', color: 'cat-teknoloji' },
+          { name: 'Uygulamalar',slug: 'uygulamalar',icon: '📲', color: 'cat-teknoloji' },
+          { name: 'Donanım',    slug: 'donanim',    icon: '💻', color: 'cat-teknoloji' },
+        ],
+      },
+      {
+        name: 'Rehberler', slug: 'rehberler', icon: '🧠', color: 'cat-rehber',
+        description: 'SEO odaklı nasıl yapılır rehberleri', menuOrder: 6, type: 'guide',
+        children: [
+          { name: 'Nasıl Yapılır?',    slug: 'nasil-yapilir',      icon: '❓', color: 'cat-rehber', type: 'guide' },
+          { name: 'Para Kazanma',      slug: 'para-kazanma',       icon: '💸', color: 'cat-rehber', type: 'guide' },
+          { name: 'Yatırım Taktikleri',slug: 'yatirim-taktikleri', icon: '♟️', color: 'cat-rehber', type: 'guide' },
+        ],
+      },
+    ]
+
+    for (const ana of ANA) {
+      const parent = await prisma.category.create({
+        data: {
+          name: ana.name, slug: ana.slug, icon: ana.icon, color: ana.color,
+          description: ana.description, menuOrder: ana.menuOrder,
+          type: (ana as any).type ?? 'news',
+          showInMenu: true, showInHome: true,
+        },
+      })
+      for (const child of ana.children) {
+        await prisma.category.create({
+          data: {
+            name: child.name, slug: child.slug, icon: child.icon, color: child.color,
+            type: (child as any).type ?? 'news',
+            parentId: parent.id, showInMenu: true, showInHome: false,
+          },
+        })
+      }
+    }
+
+    // Özel kategoriler
+    await prisma.category.createMany({
+      data: [
+        { name: 'Son Dakika', slug: 'son-dakika', icon: '🔴', color: 'cat-son-dakika', showInMenu: false, showInHome: true },
+        { name: 'Trendler',   slug: 'trendler',   icon: '🔥', color: 'cat-trend',      showInMenu: false, showInHome: true },
+      ],
+    })
+
+    console.log('✅ Kategoriler oluşturuldu')
+  } else {
+    console.log('✅ Kategoriler zaten mevcut, atlandı')
+  }
+
+  console.log('✅ Seed tamamlandı — yazı yok, kategoriler hazır')
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect())
