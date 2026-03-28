@@ -23,17 +23,20 @@ if (password.length < 8) {
   process.exit(1)
 }
 
-const hash = await bcrypt.hash(password, 12)
+async function main() {
+  const hash = await bcrypt.hash(password, 12)
 
-const result = await prisma.user.updateMany({
-  where: { systemRole: 'SUPERADMIN' },
-  data: { email, password: hash },
-})
+  const result = await prisma.user.updateMany({
+    where: { systemRole: 'SUPERADMIN' },
+    data: { email, password: hash },
+  })
 
-if (result.count === 0) {
-  console.error('❌ SUPERADMIN kullanıcı bulunamadı. Önce seed çalıştır: npx prisma db seed')
-  process.exit(1)
+  if (result.count === 0) {
+    console.error('❌ SUPERADMIN kullanıcı bulunamadı. Önce seed çalıştır: npx prisma db seed')
+    process.exit(1)
+  }
+
+  console.log(`✅ Admin güncellendi → ${email}`)
 }
 
-console.log(`✅ Admin güncellendi → ${email}`)
-await prisma.$disconnect()
+main().catch(console.error).finally(() => prisma.$disconnect())

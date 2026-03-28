@@ -9,14 +9,15 @@ Next.js 16 tabanlı, çok ajanlı yapay zeka sistemiyle otomatik haber üretip y
 ```bash
 git clone https://github.com/ladoxx/ai-media.git
 cd ai-media
-chmod +x install.sh
+chmod +x install.sh start.sh
 sudo bash install.sh
 ```
 
 Script kurulum sırasında şunları sorar:
 1. **IP veya domain** — sunucu adresi
-2. **Admin şifresi** — ilk giriş şifresi (boş = `Admin123!`)
-3. **Kurulum modu** — Dev / Production / Docker
+2. **Admin email** — giriş email adresi
+3. **Admin şifresi** — ilk giriş şifresi (boş = `Admin123!`)
+4. **Kurulum modu** — Dev / Production / Docker / Sadece Başlat
 
 ---
 
@@ -32,12 +33,27 @@ Build alınır, PM2 ile arka planda çalışır. Nginx reverse proxy + otomatik 
 ```bash
 sudo bash install.sh   # → 3 seç
 ```
-Veya manuel:
+
+### 4) Sadece Başlat
+Kurulum yapmadan mevcut container'ı başlatır.
+
+---
+
+## Hızlı Komutlar
+
 ```bash
-cp .env.example .env.local && nano .env.local
-touch prisma/dev.db automation.db
-mkdir -p public/uploads backups
-docker compose up -d
+# İlk kurulum
+chmod +x install.sh start.sh
+sudo bash install.sh
+
+# Sistemi yönet (kurulum sonrası)
+bash start.sh
+
+# Direkt komutlar
+docker compose up -d      # başlat
+docker compose down       # durdur
+docker compose restart    # yeniden başlat
+docker compose logs -f    # loglar
 ```
 
 ---
@@ -46,18 +62,18 @@ docker compose up -d
 
 | Alan | Değer |
 |------|-------|
-| Email | `admin@cyba.com.tr` |
+| Email | Kurulumda belirlenen email |
 | Şifre | Kurulumda belirlenen şifre |
 | Admin | `/admin` |
 | SuperAdmin | `/superadmin` |
 
 **Email ve şifre değiştirmek:**
 ```bash
-# Doğrudan
-npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'
-
 # Docker
 docker exec ai-media npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'
+
+# PM2 / Dev
+npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre123!'
 ```
 
 ---
@@ -75,47 +91,16 @@ Docker için sadece Docker Engine yeterli, Node.js gerekmez.
 
 ---
 
-## Manuel Kurulum
-
-```bash
-# 1. Bağımlılıklar
-sudo apt-get install -y build-essential python3
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-sudo apt-get install -y nodejs
-npm install -g pm2
-
-# 2. Proje
-git clone https://github.com/ladoxx/ai-media.git && cd ai-media
-npm install
-
-# 3. Ortam değişkenleri
-cp .env.example .env.local
-nano .env.local
-
-# 4. Veritabanı
-npx prisma generate
-npx prisma migrate deploy
-npx prisma db seed
-
-# 5. Admin şifre
-npx tsx scripts/set-password.ts 'ŞifreniziYazın'
-
-# 6. Başlatma (production)
-npm run build
-pm2 start npm --name "ai-media" -- start
-pm2 save && pm2 startup
-```
-
----
-
 ## `.env.local` Zorunlu Alanlar
+
+> `install.sh` tüm değerleri otomatik üretir. Manuel kurulumda:
 
 ```env
 DATABASE_URL="file:./prisma/dev.db"
-NEXTAUTH_SECRET="openssl rand -base64 32"
+NEXTAUTH_SECRET="$(openssl rand -base64 32)"
 NEXTAUTH_URL="https://siteadresi.com"
-ENCRYPTION_KEY="openssl rand -hex 32   # 64 karakter zorunlu"
-AUTOMATION_SECRET="rastgele string"
+ENCRYPTION_KEY="$(openssl rand -hex 32)"
+AUTOMATION_SECRET="$(openssl rand -base64 24 | tr -d '=/+')"
 APP_URL="https://siteadresi.com"
 NEXT_PUBLIC_SITE_URL="https://siteadresi.com"
 ```
@@ -159,11 +144,12 @@ pm2 restart ai-media
 ## Güncelleme
 
 ```bash
-git pull
+# install.sh ile (önerilen):
+sudo bash install.sh update
 
-# PM2 ile:
-npm install && npx prisma migrate deploy && npm run build && pm2 restart ai-media
+# Manuel PM2:
+git pull && npm install && npx prisma migrate deploy && npm run build && pm2 restart ai-media
 
-# Docker ile:
-docker compose up -d --build
+# Manuel Docker:
+git pull && docker compose up -d --build
 ```

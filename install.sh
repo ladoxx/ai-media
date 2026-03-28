@@ -106,6 +106,103 @@ fi
 echo -e "${GREEN}✅ Proje klasörü OK${NC}"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MEVCUT KURULUM TESPİTİ
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ -f ".env.local" ] && [ -f "docker-compose.yml" ]; then
+  echo ""
+  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${CYAN}  Mevcut kurulum tespit edildi!${NC}"
+  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+
+  # Mevcut durum
+  if command -v docker &>/dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "ai-media"; then
+    IP=$(hostname -I | awk '{print $1}')
+    echo -e "  Durum: ${GREEN}🟢 Docker çalışıyor${NC}  →  http://$IP:4000"
+  elif command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "ai-media"; then
+    IP=$(hostname -I | awk '{print $1}')
+    echo -e "  Durum: ${GREEN}🟢 PM2 çalışıyor${NC}  →  http://$IP:4000"
+  else
+    echo -e "  Durum: ${RED}🔴 Servis çalışmıyor${NC}"
+  fi
+
+  echo ""
+  echo -e "  Ne yapmak istersiniz?"
+  echo ""
+  echo -e "  ${GREEN}1)${NC} 🔄  Sistemi Başlat"
+  echo -e "  ${GREEN}2)${NC} 🔁  Yeniden Başlat"
+  echo -e "  ${GREEN}3)${NC} 📊  Durum Göster"
+  echo -e "  ${GREEN}4)${NC} 🔧  Güncelle (git pull + rebuild)"
+  echo -e "  ${GREEN}5)${NC} 🆕  Yeni Kurulum (sıfırdan)"
+  echo ""
+  echo -ne "${GREEN}  Seçiminiz (1-5): ${NC}"
+  read EXISTING_CHOICE
+
+  case $EXISTING_CHOICE in
+    1)
+      echo -e "${YELLOW}▶️  Başlatılıyor...${NC}"
+      if command -v docker &>/dev/null && [ -f "docker-compose.yml" ]; then
+        docker compose up -d
+        echo -e "${GREEN}✅ Docker başlatıldı!${NC}"
+      elif command -v pm2 &>/dev/null; then
+        set -a; source .env.local; set +a
+        pm2 start ai-media 2>/dev/null || pm2 start npm --name "ai-media" -- start
+        echo -e "${GREEN}✅ PM2 başlatıldı!${NC}"
+      fi
+      exit 0
+      ;;
+    2)
+      echo -e "${YELLOW}🔁 Yeniden başlatılıyor...${NC}"
+      if command -v docker &>/dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "ai-media"; then
+        docker compose restart
+        echo -e "${GREEN}✅ Docker yeniden başlatıldı!${NC}"
+      elif command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "ai-media"; then
+        pm2 restart ai-media
+        echo -e "${GREEN}✅ PM2 yeniden başlatıldı!${NC}"
+      else
+        echo -e "${RED}❌ Çalışan servis bulunamadı!${NC}"
+      fi
+      exit 0
+      ;;
+    3)
+      echo ""
+      echo -e "${CYAN}📊 Servis Durumu:${NC}"
+      command -v docker &>/dev/null && docker ps --filter "name=ai-media" --format "  Docker: {{.Names}} — {{.Status}}"
+      command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep "ai-media" || true
+      echo ""
+      df -h / | tail -1 | awk '{print "  Disk: " $3 " / " $2 " (" $5 " dolu)"}'
+      exit 0
+      ;;
+    4)
+      # Güncelleme modu — $1 yoksa buradan tetiklenir
+      echo -e "${BLUE}🔄 Güncelleme başlıyor...${NC}"
+      git pull
+      if command -v docker &>/dev/null && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "ai-media"; then
+        docker compose build --no-cache && docker compose up -d
+        echo -e "${GREEN}✅ Docker güncellendi!${NC}"
+      elif command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "ai-media"; then
+        set -a; source .env.local; set +a
+        npm install --silent
+        npx prisma generate
+        npx prisma migrate deploy
+        NODE_OPTIONS=--max-old-space-size=4096 npx next build
+        pm2 restart ai-media
+        echo -e "${GREEN}✅ PM2 güncellendi!${NC}"
+      fi
+      exit 0
+      ;;
+    5)
+      echo -e "${YELLOW}⚠️  Yeni kurulum başlıyor...${NC}"
+      # Devam et (aşağıdaki kurulum adımlarına geç)
+      ;;
+    *)
+      echo -e "${RED}❌ Geçersiz seçim!${NC}"
+      exit 1
+      ;;
+  esac
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # KULLANICIDAN BİLGİ AL
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo ""
@@ -175,14 +272,33 @@ echo -e "   ${GREEN}3)${NC} 🐳 Docker"
 echo -e "      → docker-compose ile izole container"
 echo -e "      → Port 4000 (veya Nginx ile 80/443)"
 echo ""
-echo -ne "${GREEN}   Seçiminiz (1/2/3): ${NC}"
+echo -e "   ${GREEN}4)${NC} 🔄 Sadece Başlat"
+echo -e "      → Kurulum yapma, mevcut container'ı başlat"
+echo -e "      → Docker kurulu olmalı"
+echo ""
+echo -ne "${GREEN}   Seçiminiz (1/2/3/4): ${NC}"
 read MODE_CHOICE
 
-while [[ "$MODE_CHOICE" != "1" && "$MODE_CHOICE" != "2" && "$MODE_CHOICE" != "3" ]]; do
-  echo -e "${RED}❌ Geçersiz seçim! 1, 2 veya 3 girin${NC}"
-  echo -ne "${GREEN}   Seçiminiz (1/2/3): ${NC}"
+while [[ "$MODE_CHOICE" != "1" && "$MODE_CHOICE" != "2" && "$MODE_CHOICE" != "3" && "$MODE_CHOICE" != "4" ]]; do
+  echo -e "${RED}❌ Geçersiz seçim! 1, 2, 3 veya 4 girin${NC}"
+  echo -ne "${GREEN}   Seçiminiz (1/2/3/4): ${NC}"
   read MODE_CHOICE
 done
+
+# Mod 4: Sadece başlat
+if [ "$MODE_CHOICE" = "4" ]; then
+  echo -e "${YELLOW}▶️  Container başlatılıyor...${NC}"
+  touch prisma/dev.db automation.db 2>/dev/null || true
+  mkdir -p public/uploads backups 2>/dev/null || true
+  docker compose up -d 2>/dev/null || docker-compose up -d
+  if [ $? -eq 0 ]; then
+    IP=$(hostname -I | awk '{print $1}')
+    echo -e "${GREEN}✅ Başlatıldı → http://$IP:4000${NC}"
+  else
+    echo -e "${RED}❌ Başlatılamadı. docker compose logs ile kontrol edin.${NC}"
+  fi
+  exit 0
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ADIM 2 - BAĞIMLILIKLAR
@@ -599,6 +715,14 @@ elif [ "$MODE_CHOICE" = "3" ]; then
 
   ufw allow 4000/tcp 2>/dev/null || true
 
+  # Sistem açılınca Docker otomatik başlasın
+  systemctl enable docker 2>/dev/null || true
+  # Container restart=unless-stopped ile zaten otomatik başlıyor
+  # Ek güvenlik için cron: container durmuşsa yeniden başlat
+  CRON_JOB="*/5 * * * * docker start ai-media 2>/dev/null || true"
+  (crontab -l 2>/dev/null | grep -v "docker start ai-media"; echo "$CRON_JOB") | crontab -
+  echo -e "${GREEN}✅ Otomatik başlatma ayarlandı${NC}"
+
   echo ""
   echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}  ✅ DOCKER KURULUM TAMAMLANDI!${NC}"
@@ -608,11 +732,13 @@ elif [ "$MODE_CHOICE" = "3" ]; then
   echo -e "  👤 Email:      ${CYAN}${ADMIN_EMAIL}${NC}"
   echo -e "  🔑 Şifre:      ${CYAN}${ADMIN_PASSWORD}${NC}"
   echo ""
-  echo -e "  🐳 Komutlar:"
+  echo -e "  ${CYAN}Kolay yönetim:${NC}"
+  echo -e "  bash start.sh"
+  echo ""
+  echo -e "  🐳 Manuel komutlar:"
   echo -e "  docker compose logs -f        # loglar"
   echo -e "  docker compose restart        # yeniden başlat"
   echo -e "  docker compose down           # durdur"
-  echo -e "  docker compose pull && docker compose up -d  # güncelle"
   echo ""
   echo -e "  🔑 Şifre değiştirmek için:"
   echo -e "  docker exec ai-media npx tsx scripts/set-admin.ts 'email@site.com' 'YeniŞifre'"
