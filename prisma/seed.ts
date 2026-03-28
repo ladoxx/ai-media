@@ -20,13 +20,20 @@ async function main() {
   console.log('🌱 Seed başlıyor...')
 
   // ── Superadmin ───────────────────────────────────────────────────────────
-  const hash = await bcrypt.hash('Admin123!', 12)
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@cyba.com.tr' },
-    update: { systemRole: 'SUPERADMIN', active: true },
-    create: { email: 'admin@cyba.com.tr', password: hash, name: 'Admin', systemRole: 'SUPERADMIN', active: true },
-  })
-  console.log('✅ Admin oluşturuldu')
+  // SUPERADMIN zaten varsa (farklı email ile) dokunma — sadece active yap
+  const existingAdmin = await prisma.user.findFirst({ where: { systemRole: 'SUPERADMIN' } })
+  let admin: { id: string }
+  if (!existingAdmin) {
+    const hash = await bcrypt.hash('Admin123!', 12)
+    admin = await prisma.user.create({
+      data: { email: 'admin@cyba.com.tr', password: hash, name: 'Admin', systemRole: 'SUPERADMIN', active: true },
+    })
+    console.log('✅ Admin oluşturuldu (varsayılan: admin@cyba.com.tr / Admin123!)')
+  } else {
+    admin = existingAdmin
+    await prisma.user.update({ where: { id: existingAdmin.id }, data: { active: true } })
+    console.log('✅ Admin zaten mevcut, aktif edildi')
+  }
 
   // ── RBAC: Tüm yetkiler ───────────────────────────────────────────────────
   const allPermissions = [
